@@ -26,5 +26,5 @@ exports.HOPR_MINTER = {
     rinkeby: undefined,
     goerli: undefined,
     kovan: undefined,
-    private: '0x902602174a9cEb452f60c09043BE5EBC52096200',
+    private: '0x0a67180CF519aDF27f1FD32F7255bBa00B536FC6',
 };
