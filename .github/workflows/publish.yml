@@ -1,14 +1,14 @@
 # This workflow will run a pre-release version of the built package.
 # See more in https://github.com/esamattis/npm-release
 
-name: Pre-release
+name: Publish
 
 on:
   push:
     branches: [master, debug]
 
 jobs:
-  prerelease:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
