@@ -9,7 +9,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://npm.pkg.github.com/@hoprnet"
+    "registry": "https://npm.pkg.github.com/@hoprnet/hopr-ethereum"
   },
   "license": "LGPL-3.0-only",
   "main": "./build/lib/scripts/api.js",
