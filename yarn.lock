@@ -23,17 +23,17 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
-"@hoprnet/hopr-demo-seeds@^1.0.0":
-  version "1.0.0"
-  resolved "https://npm.pkg.github.com/download/@hoprnet/hopr-demo-seeds/1.0.0/ae0bd9d428e1ea3b9bb851327e5ceb184dde2d7786583a99322d19f0be6d8243#ff80bb1203067e461d3468471348ff33ec48aa28"
-  integrity sha512-wt7OqkHSKpG2mjwWfWSJ+TGUNlD3689i5U/h9OEnMDgpl/hl1DzY7J3jE58rp/Vhy0v3lBAeAaiFkHu3zFaa9Q==
+"@hoprnet/hopr-demo-seeds@1.0.1":
+  version "1.0.1"
+  resolved "https://npm.pkg.github.com/download/@hoprnet/hopr-demo-seeds/1.0.1/fff003a25c77c9e83b5772be5f98f3e62af7f649b10e3a2e234e9e8a74da17d4#309c9c0f7f5109b890bd768ab87e1204af657912"
+  integrity sha512-scjV1w+2EG2JS8gzZBTJBYAGwGaGaEUfVXCj+7mwGMC51dkYtNhlchdRp/dOEYhpLegakL16PZtva8lXoAOJmw==
   dependencies:
     micro "^9.3.4"
 
-"@hoprnet/hopr-utils@latest":
-  version "0.1.2"
-  resolved "https://npm.pkg.github.com/download/@hoprnet/hopr-utils/0.1.2/af3b857ef90d403a41afa3c374861967103b32d88deb59f2cb74b6f4bbcf6a93#707c9eea620a1c64b7071f8779b705837ac6be5b"
-  integrity sha512-I+dhlmqMdB3AaWdk7HY/GRj1FJteGPrL/zffoYSAJyXAVYkpB1ZljKknjKWBCy01nTnbpzCLRbXi7my1Dw9EPA==
+"@hoprnet/hopr-utils@0.1.3":
+  version "0.1.3"
+  resolved "https://npm.pkg.github.com/download/@hoprnet/hopr-utils/0.1.3/583c53e5ea61767940d847184bfc1e101259c7923b57fed31c47aab98a64700a#ff6fc81584249f5b81c73cfa59ee336200723305"
+  integrity sha512-MoPgSlig0sUF+jUyLNTyKr16GmZBn4So5JMTX6/F/kEy4CWjd+yNVbt3DHY9ZusoQfrXmRsf0REniPcaSz4CBw==
   dependencies:
     bignumber.js "^9.0.0"
     chalk "^4.0.0"
@@ -8083,9 +8083,9 @@ web3-provider-engine@14.2.1:
     xhr "^2.2.0"
     xtend "^4.0.1"
 
-"web3-provider-engine@git+https://github.com/trufflesuite/provider-engine.git#web3-one":
+"web3-provider-engine@https://github.com/trufflesuite/provider-engine#web3-one":
   version "14.0.6"
-  resolved "git+https://github.com/trufflesuite/provider-engine.git#3538c60bc4836b73ccae1ac3f64c8fed8ef19c1a"
+  resolved "https://github.com/trufflesuite/provider-engine#3538c60bc4836b73ccae1ac3f64c8fed8ef19c1a"
   dependencies:
     async "^2.5.0"
     backoff "^2.5.0"
