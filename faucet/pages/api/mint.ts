@@ -17,7 +17,7 @@ export default async (req: IncomingMessage, res: ServerResponse) => {
 
     // validate network
     const network = query.network
-    if (typeof addresses[network] === 'undefined') {
+    if (typeof addresses.HOPR_FAUCET[network] === 'undefined') {
       res.statusCode = 400
       res.end('Invalid network.')
       return
@@ -42,7 +42,7 @@ export default async (req: IncomingMessage, res: ServerResponse) => {
 
     // initialize web3
     const web3 = new Web3(url)
-    const hoprFaucet = new web3.eth.Contract(HoprFaucetAbi as any, addresses[network])
+    const hoprFaucet = new web3.eth.Contract(HoprFaucetAbi as any, addresses.HOPR_FAUCET[network])
 
     const tx = hoprFaucet.methods.mint(address, toWei('100', 'ether'))
 
