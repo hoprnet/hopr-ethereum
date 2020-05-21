@@ -50,7 +50,7 @@ export default async (req: IncomingMessage, res: ServerResponse) => {
       {
         to: hoprFaucet.options.address,
         data: tx.encodeABI(),
-        gas: 50e3,
+        gas: 100e3,
       },
       PRIVATE_KEY
     )
