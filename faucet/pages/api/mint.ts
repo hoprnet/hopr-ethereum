@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from 'http'
 import { parse as parseUrl } from 'url'
-import { HOPR_FAUCET as addresses, Networks } from '@hoprnet/hopr-ethereum/scripts/addresses'
+import { addresses } from '@hoprnet/hopr-ethereum'
 import networksConfig from '@hoprnet/hopr-ethereum/truffle-networks.json'
 import HoprFaucetAbi from '@hoprnet/hopr-ethereum/build/extracted/abis/HoprFaucet.json'
 import Web3 from 'web3'
@@ -11,7 +11,7 @@ const { PRIVATE_KEY, INFURA } = process.env
 export default async (req: IncomingMessage, res: ServerResponse) => {
   try {
     const query = parseUrl(req.url, true).query as {
-      network: Networks
+      network: addresses.Networks
       address: string
     }
 
