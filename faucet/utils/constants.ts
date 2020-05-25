@@ -1,3 +1,3 @@
-import type { Networks } from '@hoprnet/hopr-ethereum/scripts/addresses'
+import type { addresses } from '@hoprnet/hopr-ethereum'
 
-export const NETWORK: Networks = 'kovan'
+export const NETWORK: addresses.Networks = 'kovan'

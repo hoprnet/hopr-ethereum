@@ -1,7 +1,7 @@
-import type { Networks } from '@hoprnet/hopr-ethereum/scripts/addresses'
+import type { addresses } from '@hoprnet/hopr-ethereum'
 
 export const colors: {
-  [key in Networks]?: string
+  [key in addresses.Networks]?: string
 } = {
   kovan: 'purple',
   private: 'grey',
