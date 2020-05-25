@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { isAddress } from 'web3-utils'
-import type { Networks } from '@hoprnet/hopr-ethereum/scripts/addresses'
+import type { addresses } from '@hoprnet/hopr-ethereum'
 
 async function mint(
-  network: Networks,
+  network: addresses.Networks,
   address: string
 ): Promise<{
   success: boolean
@@ -26,7 +26,7 @@ async function mint(
   }
 }
 
-function Faucet({ network }: { network: Networks }) {
+function Faucet({ network }: { network: addresses.Networks }) {
   const [address, setAddress] = useState<string>(undefined)
   const [isValidAddress, setIsValidAddress] = useState<boolean>(undefined)
   const [status, setStatus] = useState<'PENDING' | 'SUCCESS' | 'FAILURE'>(undefined)
@@ -110,8 +110,8 @@ function Faucet({ network }: { network: Networks }) {
           padding: 0.5em;
           border: none;
           width: 150px;
-          cursor: ${isValidAddress ? 'pointer' : 'not-allowed'};
-          opacity: ${isValidAddress ? 1 : 0.75};
+          cursor: ${isButtonDisabled ? 'not-allowed' : 'pointer'};
+          opacity: ${isButtonDisabled ? 0.75 : 1};
         }
       `}</style>
     </div>

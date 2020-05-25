@@ -12,4 +12,5 @@ types/truffle-contracts
 
 # next.js
 .next/
+.vercel/
 out/
