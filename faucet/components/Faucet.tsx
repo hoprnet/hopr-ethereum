@@ -10,32 +10,42 @@ async function mint(
   transactionHash?: string
   message?: string
 }> {
-  const response = await fetch(`/api/mint?network=${network}&address=${address}`)
+  try {
+    const response = await fetch(`/api/mint?network=${network}&address=${address}`)
 
-  if (response.status === 200) {
-    const { transactionHash } = await response.json()
-    return {
-      success: true,
-      transactionHash,
+    if (response.status === 200) {
+      const { transactionHash } = await response.json()
+      return {
+        success: true,
+        transactionHash,
+      }
+    } else {
+      return {
+        success: false,
+        message: response.statusText,
+      }
     }
-  } else {
+  } catch (err) {
+    console.error(err)
+
     return {
       success: false,
-      message: response.statusText,
+      message: 'Unexpected error',
     }
   }
 }
 
 function Faucet({ network }: { network: addresses.Networks }) {
+  // initializing states as 'undefined' to signify that state is uninitialized
   const [address, setAddress] = useState<string>(undefined)
   const [isValidAddress, setIsValidAddress] = useState<boolean>(undefined)
   const [status, setStatus] = useState<'PENDING' | 'SUCCESS' | 'FAILURE'>(undefined)
   const [message, setMessage] = useState<string>(undefined)
   const isButtonDisabled = !isValidAddress || status === 'PENDING'
-  const showStatusMessage = status === 'SUCCESS' || status === 'FAILURE'
 
   // update 'isValidAddress' on 'address' change
   useEffect(() => {
+    // check if address is initialized or empty (when a user hits backspace)
     if (typeof address === 'undefined' || address === '') {
       setIsValidAddress(undefined)
     } else {
@@ -44,16 +54,23 @@ function Faucet({ network }: { network: addresses.Networks }) {
   }, [address])
 
   // once button is clicked
-  const onClick = async () => {
-    setStatus('PENDING')
+  const onClick = async (network: addresses.Networks, address: string): Promise<void> => {
+    try {
+      setStatus('PENDING')
 
-    const result = await mint(network, address)
+      const result = await mint(network, address)
 
-    if (result.success) {
-      setMessage(result.transactionHash)
-      setStatus('SUCCESS')
-    } else {
-      setMessage(result.message)
+      if (result.success) {
+        setMessage(result.transactionHash)
+        setStatus('SUCCESS')
+      } else {
+        setMessage(result.message)
+        setStatus('FAILURE')
+      }
+    } catch (err) {
+      console.error(err)
+
+      setMessage('Unexpected error')
       setStatus('FAILURE')
     }
   }
@@ -63,22 +80,22 @@ function Faucet({ network }: { network: addresses.Networks }) {
       <div className="inputs">
         <input onChange={(e) => setAddress(e.target.value)} defaultValue={address} />
         &nbsp;
-        <button onClick={onClick} disabled={isButtonDisabled}>
+        <button onClick={() => onClick(network, address)} disabled={isButtonDisabled}>
           Give me hopr tokens!
         </button>
       </div>
-      {!showStatusMessage ? null : status === 'SUCCESS' ? (
+      {status === 'SUCCESS' ? (
         <div>
           ✔ Your transaction is pending:{' '}
           <a href={`http://${network}.etherscan.io/tx/${message}`} target="_blank" rel="noopener noreferrer">
             etherscan
           </a>
         </div>
-      ) : (
+      ) : status === 'FAILURE' ? (
         <div>
           <p>🤕 Something broke: '{message}'</p>
         </div>
-      )}
+      ) : null}
       <style jsx>{`
         .container {
           display: flex;

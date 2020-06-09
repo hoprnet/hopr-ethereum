@@ -13,6 +13,7 @@ export default async (req: IncomingMessage, res: ServerResponse) => {
     const query = parseUrl(req.url, true).query as {
       network: addresses.Networks
       address: string
+      waitForConfirmation: string
     }
 
     // validate network
@@ -24,14 +25,16 @@ export default async (req: IncomingMessage, res: ServerResponse) => {
     }
 
     // validate address
-    let address = query.address
-    if (!isAddress(address)) {
+    if (!isAddress(query.address)) {
       res.statusCode = 400
       res.end('Invalid address.')
       return
     }
     // checksum address
-    address = toChecksumAddress(address)
+    const address = toChecksumAddress(query.address)
+
+    // waitForConfirmation
+    const waitForConfirmation = query.waitForConfirmation === 'true'
 
     const isPrivate = network === 'private'
 
@@ -55,8 +58,11 @@ export default async (req: IncomingMessage, res: ServerResponse) => {
       PRIVATE_KEY
     )
 
-    // we don't need to wait for the receipt
-    web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    if (waitForConfirmation) {
+      await web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    } else {
+      web3.eth.sendSignedTransaction(signedTransaction.rawTransaction)
+    }
 
     res.statusCode = 200
     res.setHeader('Content-Type', 'application/json')
