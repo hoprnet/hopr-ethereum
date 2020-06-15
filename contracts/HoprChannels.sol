@@ -181,7 +181,10 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         require(not_after >= now, "HoprChannels: signature must not be expired");
 
         address counterparty = ecrecover(
-            prefixed(keccak256(abi.encodePacked(stateCounter, initiator, additionalDeposit, partyAAmount, not_after))),
+            toEthSignedMessageHash(
+                "160",
+                abi.encode(stateCounter, initiator, additionalDeposit, partyAAmount, not_after)
+            ),
             v,
             r,
             s
@@ -275,8 +278,9 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         bytes32 challenge = keccak256(abi.encodePacked(secret_a)) ^ keccak256(abi.encodePacked(secret_b));
 
-        bytes32 hashedTicket = prefixed(
-            keccak256(abi.encodePacked(challenge, pre_image, recipientAccount.counter, amount, win_prob))
+        bytes32 hashedTicket = toEthSignedMessageHash(
+            "160",
+            abi.encode(challenge, pre_image, recipientAccount.counter, amount, win_prob)
         );
 
         require(uint256(hashedTicket) < uint256(win_prob), "HoprChannels: ticket must be a win");
@@ -461,10 +465,10 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     }
 
     /**
-     * @notice builds a prefixed hash to mimic the behavior of eth_sign
-     * @param message bytes32 message to prefix
+     * @notice builds a toEthSignedMessageHash hash to mimic the behavior of eth_sign
+     * @param message bytes message to prefix
      */
-    function prefixed(bytes32 message) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+    function toEthSignedMessageHash(string memory length, bytes memory message) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n", length, message));
     }
 }
