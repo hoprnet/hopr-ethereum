@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js'
-import { keccak256, xorBytes32, MAX_UINT256, encode, signMessage } from './random'
+import { keccak256, xorBytes32, MAX_UINT256, encode, signMessage, getChannelId, getParties } from './random'
 
 BigNumber.config({ EXPONENTIAL_AT: 1e9 })
 
@@ -24,6 +24,7 @@ type ITicket = (args: {
   counter: number // return same as provided
   hashedPorSecretA: string // return hashed alternative
   hashedPorSecretB: string // return hashed alternative
+  channelId: string // return channel ID
   challenge: string // return hashed alternative
   hashedCounterPartySecret: string // return hashed alternative
   winProb: string // return winProb in bytes32
@@ -65,7 +66,11 @@ const Ticket: ITicket = ({
     new BigNumber(winProbPercent).multipliedBy(MAX_UINT256).dividedBy(100).toString()
   )
 
+  const { partyA, partyB } = getParties(accountA, accountB)
+  const channelId = getChannelId(partyA, partyB)
+
   const encodedTicket = encode([
+    { type: 'bytes32', value: channelId },
     { type: 'bytes32', value: challenge },
     { type: 'bytes32', value: counterPartySecret },
     { type: 'uint256', value: counter },
@@ -85,6 +90,7 @@ const Ticket: ITicket = ({
     counter,
     hashedPorSecretA,
     hashedPorSecretB,
+    channelId,
     challenge,
     hashedCounterPartySecret,
     winProb,

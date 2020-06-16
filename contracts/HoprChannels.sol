@@ -254,6 +254,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
      */
     function redeemTicket(
         bytes32 pre_image,
+        bytes32 channel_id,
         bytes32 secret_a,
         bytes32 secret_b,
         uint256 amount,
@@ -262,20 +263,19 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         bytes32 s,
         uint8 v
     ) public {
-        address recipient = msg.sender;
-        Account storage recipientAccount = accounts[recipient];
+        Account storage recipientAccount = accounts[msg.sender];
 
         bytes32 challenge = keccak256(abi.encodePacked(secret_a)) ^ keccak256(abi.encodePacked(secret_b));
 
         bytes32 hashedTicket = ECDSA.toEthSignedMessageHash(
-            "160",
-            abi.encode(challenge, pre_image, recipientAccount.counter, amount, win_prob)
+            "192",
+            abi.encode(channel_id, challenge, pre_image, recipientAccount.counter, amount, win_prob)
         );
 
         require(uint256(hashedTicket) < uint256(win_prob), "HoprChannels: ticket must be a win");
 
         (address party_a, , Channel storage channel, ChannelStatus status) = getChannel(
-            recipient,
+            msg.sender,
             ECDSA.recover(hashedTicket, r, s, v)
         );
 
@@ -291,7 +291,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         recipientAccount.hashedSecret = pre_image;
 
-        if (recipient == party_a) {
+        if (msg.sender == party_a) {
             channel.partyABalance = channel.partyABalance.add(amount);
         } else {
             channel.partyABalance = channel.partyABalance.sub(amount);

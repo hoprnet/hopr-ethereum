@@ -229,6 +229,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
         await hoprChannels.redeemTicket(
           ticket.counterPartySecret,
+          ticket.channelId,
           ticket.porSecretA,
           ticket.porSecretB,
           ticket.amount,
@@ -272,6 +273,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
         await hoprChannels.redeemTicket(
           ticket.counterPartySecret,
+          ticket.channelId,
           ticket.porSecretA,
           ticket.porSecretB,
           ticket.amount,
@@ -328,6 +330,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
         await hoprChannels.redeemTicket(
           ticket.counterPartySecret,
+          ticket.channelId,
           ticket.porSecretA,
           ticket.porSecretB,
           ticket.amount,
@@ -550,6 +553,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
           await hoprChannels.redeemTicket(
             ticket.counterPartySecret,
+            ticket.channelId,
             ticket.porSecretA,
             ticket.porSecretB,
             ticket.amount,
@@ -594,6 +598,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
           await hoprChannels.redeemTicket(
             ticket.counterPartySecret,
+            ticket.channelId,
             ticket.porSecretA,
             ticket.porSecretB,
             ticket.amount,
@@ -650,6 +655,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
           await hoprChannels.redeemTicket(
             ticket.counterPartySecret,
+            ticket.channelId,
             ticket.porSecretA,
             ticket.porSecretB,
             ticket.amount,
