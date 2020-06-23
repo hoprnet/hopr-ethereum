@@ -72,7 +72,7 @@ const Ticket: ITicket = ({
   const encodedTicket = encode([
     { type: 'bytes32', value: channelId },
     { type: 'bytes32', value: challenge },
-    { type: 'bytes32', value: counterPartySecret },
+    { type: 'bytes32', value: hashedCounterPartySecret },
     { type: 'uint256', value: counter },
     { type: 'uint256', value: amount },
     { type: 'bytes32', value: winProb },
