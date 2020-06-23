@@ -264,7 +264,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     ) public {
         Account storage recipientAccount = accounts[msg.sender];
 
-        bytes32 challenge = keccak256(abi.encodePacked(secret_a)) ^ keccak256(abi.encodePacked(secret_b));
+        bytes32 challenge = keccak256(abi.encode(secret_a, secret_b));
 
         bytes32 hashedTicket = ECDSA.toEthSignedMessageHash(
             "192",

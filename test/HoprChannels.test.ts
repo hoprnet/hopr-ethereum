@@ -31,7 +31,7 @@ const formatChannel = (res: PromiseType<HoprChannelsInstance['channels']>) => ({
 //   return response;
 // };
 
-contract.only('HoprChannels', function ([accountA, accountB]) {
+contract('HoprChannels', function ([accountA, accountB]) {
   const { partyA, partyB } = getParties(accountA, accountB)
 
   const partyAPrivKey = NODE_SEEDS[1]
