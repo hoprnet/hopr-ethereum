@@ -15,27 +15,96 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     event SecretHashSet(address indexed account, bytes32 secretHash, uint256 counter);
 
     // the payment channel has been funded
-    event FundedChannel(
-        address indexed funder,
-        address indexed recipient,
-        address indexed counterParty,
+
+    /* FundedChannel(
+     *   address funder,
+     *   uint256 indexed recipient,
+     *   uint256 indexed counterParty,
+     *   uint256 recipientAmount,
+     *   uint256 counterPartyAmount
+     * )
+     */
+    bytes32 constant FundedChannel = keccak256("FundedChannel(address,uint,uint,uint,uint)");
+
+    function emitFundedChannel(
+        address funder,
+        uint256 recipient,
+        uint256 counterparty,
         uint256 recipientAmount,
-        uint256 counterPartyAmount
-    );
+        uint256 counterpartyAmount,
+        bool oddRecipient,
+        bool oddCounterparty
+    ) internal {
+        uint256 fundedChannel = uint256(FundedChannel);
+        assembly {
+            let topic0 := or(or(shl(2, shr(2, fundedChannel)), shl(1, oddRecipient)), oddCounterparty)
 
-    // the payment channel has been opened
-    event OpenedChannel(address indexed opener, address indexed counterParty);
+            let memPtr := mload(0x40)
 
-    // a party has initiated channel closure
-    event InitiatedChannelClosure(address indexed initiator, address indexed counterParty, uint256 closureTime);
+            mstore(memPtr, recipientAmount)
+            mstore(add(memPtr, 0x20), counterpartyAmount)
 
-    // the payment channel has been settled and closed
-    event ClosedChannel(
-        address indexed closer,
-        address indexed counterParty,
-        uint256 partyAAmount,
-        uint256 partyBAmount
-    );
+            log3(memPtr, 0x40, topic0, recipient, counterparty)
+        }
+    }
+
+    bytes32 constant OpenedChannel = keccak256("OpenedChannel(uint,uint)");
+
+    function emitOpenedChannel(
+        uint256 opener,
+        uint256 counterparty,
+        bool oddRecipient,
+        bool oddCounterparty
+    ) internal {
+        uint256 openedChannel = uint256(OpenedChannel);
+        assembly {
+            let topic0 := or(or(shl(2, shr(2, fundedChannel)), shl(1, oddRecipient)), oddCounterparty)
+
+            log2(0x00, 0x00, topic0, recipient, counterparty)
+        }
+    }
+
+    uint256 constant InitiatedChannelClosure = keccak256("InitiatedChannelClosure(uint,uint,uint)");
+
+    function emitInitiatedChannelClosure(
+        uint256 initiator,
+        uint256 counterparty,
+        uint256 closureTime,
+        bool oddRecipient,
+        bool oddCounterparty
+    ) internal {
+        uint256 initiateChannelClosure = uint256(InitiatedChannelClosure);
+        assembly {
+            let topic0 := or(or(shl(2, shr(2, initiateChannelClosure)), shl(1, oddRecipient)), oddCounterparty)
+
+            let memPtr := mload(0x40)
+
+            mstore(memPtr, closureTime)
+
+            log3(memPtr, 0x20, topic0, recipient, counterparty)
+        }
+    }
+
+    uint256 constant ClosedChannel = keccak256("InitiatedChannelClosure(uint,uint,uint)");
+
+    function emitClosedChannel(
+        uint256 initiator,
+        uint256 counterparty,
+        uint256 closureTime,
+        bool oddRecipient,
+        bool oddCounterparty
+    ) internal {
+        uint256 closedChannel = uint256(ClosedChannel);
+        assembly {
+            let topic0 := or(or(shl(2, shr(2, closedChannel)), shl(1, oddRecipient)), oddCounterparty)
+
+            let memPtr := mload(0x40)
+
+            mstore(memPtr, closureTime)
+
+            log3(memPtr, 0x20, topic0, recipient, counterparty)
+        }
+    }
 
     struct Account {
         bytes32 hashedSecret; // account's hashedSecret
@@ -47,8 +116,8 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     struct Channel {
         uint256 deposit; // tokens in the deposit
         uint256 partyABalance; // tokens that are claimable by party 'A'
-        uint256 closureTime; // the time when the channel can be closed by either party
-        uint256 stateCounter;
+        uint128 closureTime; // the time when the channel can be closed by either party
+        uint128 stateCounter;
         /*
             stateCounter:
             0: uninitialised
@@ -109,37 +178,37 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
      * @param counterParty address the counterParty of 'recipient'
      * @param additionalDeposit uint256 amount to fund the channel
      */
-    function fundChannel(
-        address funder,
-        address recipient,
-        address counterParty,
-        uint256 additionalDeposit
-    ) internal {
-        require(recipient != counterParty, "HoprChannels: 'recipient' and 'counterParty' must not be the same");
-        require(recipient != address(0), "HoprChannels: 'recipient' address is empty");
-        require(counterParty != address(0), "HoprChannels: 'counterParty' address is empty");
-        require(additionalDeposit > 0, "HoprChannels: 'additionalDeposit' must be greater than 0");
+    // function fundChannel(
+    //     address funder,
+    //     address recipient,
+    //     address counterParty,
+    //     uint256 additionalDeposit
+    // ) internal {
+    //     require(recipient != counterParty, "HoprChannels: 'recipient' and 'counterParty' must not be the same");
+    //     require(recipient != address(0), "HoprChannels: 'recipient' address is empty");
+    //     require(counterParty != address(0), "HoprChannels: 'counterParty' address is empty");
+    //     require(additionalDeposit > 0, "HoprChannels: 'additionalDeposit' must be greater than 0");
 
-        (address party_a, , Channel storage channel, ChannelStatus status) = getChannel(recipient, counterParty);
+    //     (address party_a, , Channel storage channel, ChannelStatus status) = getChannel(recipient, counterParty);
 
-        require(
-            status == ChannelStatus.UNINITIALISED || status == ChannelStatus.FUNDED,
-            "HoprChannels: channel must be 'UNINITIALISED' or 'FUNDED'"
-        );
+    //     require(
+    //         status == ChannelStatus.UNINITIALISED || status == ChannelStatus.FUNDED,
+    //         "HoprChannels: channel must be 'UNINITIALISED' or 'FUNDED'"
+    //     );
 
-        channel.deposit = channel.deposit.add(additionalDeposit);
+    //     channel.deposit = channel.deposit.add(additionalDeposit);
 
-        if (recipient == party_a) {
-            channel.partyABalance = channel.partyABalance.add(additionalDeposit);
-        }
+    //     if (recipient == party_a) {
+    //         channel.partyABalance = channel.partyABalance.add(additionalDeposit);
+    //     }
 
-        if (status == ChannelStatus.UNINITIALISED) {
-            // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
-            channel.stateCounter += 1;
-        }
+    //     if (status == ChannelStatus.UNINITIALISED) {
+    //         // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
+    //         channel.stateCounter += 1;
+    //     }
 
-        emit FundedChannel(funder, recipient, counterParty, additionalDeposit, 0);
-    }
+    //     emit FundedChannel(funder, recipient, counterParty, additionalDeposit, 0);
+    // }
 
     /**
      * Fund a channel between 'initiator' and 'counterParty' using a signature,
@@ -159,6 +228,10 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         uint256 additionalDeposit,
         uint256 partyAAmount,
         uint256 not_after,
+        uint256 sender,
+        bool sender_odd,
+        uint256 counterparty,
+        bool counterparty_odd,
         bytes32 r,
         bytes32 s,
         uint8 v
@@ -173,7 +246,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         );
         require(not_after >= now, "HoprChannels: signature must not be expired");
 
-        address counterparty = ECDSA.recover(
+        require() = ECDSA.recover(
             ECDSA.toEthSignedMessageHash(
                 "160",
                 abi.encode(stateCounter, initiator, additionalDeposit, partyAAmount, not_after)
