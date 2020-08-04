@@ -1,5 +1,7 @@
 pragma solidity ^0.6.0;
 
+// SPDX-License-Identifier: LGPL-3.0-only
+
 /**
  * @dev Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
  *

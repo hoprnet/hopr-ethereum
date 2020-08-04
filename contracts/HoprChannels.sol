@@ -14,23 +14,24 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     using SafeMath for uint256;
 
     // an account has set a new secret hash
-    event SecretHashSet(address indexed account, bytes16 secretHash, uint128 counter);
+    event SecretHashSet(address indexed account, bytes27 secretHash, uint32 counter);
 
     // the payment channel has been funded
 
     struct Account {
-        bytes16 hashedSecret; // account's hashedSecret
-        uint120 counter; // increases everytime 'setHashedSecret' is called by the account
-        uint8 oddY;
         uint256 accountX; // second part of account's public key
+        bytes27 hashedSecret; // account's hashedSecret
+        uint32 counter; // increases everytime 'setHashedSecret' is called by the account
+        uint8 oddY;
     }
+
     enum ChannelStatus {UNINITIALISED, FUNDED, OPEN, PENDING}
 
     struct Channel {
-        uint256 deposit; // tokens in the deposit
-        uint256 partyABalance; // tokens that are claimable by party 'A'
-        uint128 closureTime; // the time when the channel can be closed by either party
-        uint128 stateCounter;
+        uint96 deposit; // tokens in the deposit
+        uint96 partyABalance; // tokens that are claimable by party 'A'
+        uint40 closureTime; // the time when the channel can be closed by either party
+        uint24 stateCounter;
         /* stateCounter mod 10 == 0: uninitialised
          * stateCounter mod 10 == 1: funding
          * stateCounter mod 10 == 2: open
@@ -42,7 +43,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     IERC1820Registry internal constant _ERC1820_REGISTRY = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
     bytes32 public constant TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
 
-    // TODO: update this when adding / removing states.
+    // @TODO: update this whenever adding / removing states.
     uint8 constant NUMBER_OF_STATES = 4;
 
     IERC20 public token; // the token that will be used to settle payments
@@ -58,6 +59,9 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
     constructor(IERC20 _token, uint256 _secsClosure) public {
         token = _token;
+
+        require(_secsClosure < (2 << 40), "HoprChannels: Closure timeout must be strictly smaller than 2**40");
+
         secsClosure = _secsClosure;
 
         _ERC1820_REGISTRY.setInterfaceImplementer(address(this), TOKENS_RECIPIENT_INTERFACE_HASH, address(this));
@@ -65,89 +69,51 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
     /**
      * @notice sets caller's hashedSecret
-     * @param hashedSecret bytes32 hashedSecret to store
+     * @param hashedSecret bytes27 hashedSecret to store
      */
-    function setHashedSecret(bytes16 hashedSecret) external {
-        require(hashedSecret != bytes16(0), "HoprChannels: hashedSecret is empty");
+    function setHashedSecret(bytes27 hashedSecret) external {
+        require(hashedSecret != bytes27(0), "HoprChannels: hashedSecret is empty");
 
         Account storage account = accounts[msg.sender];
+        require(account.accountX != uint256(0), "HoprChannels: msg.sender must have called init() before");
         require(account.hashedSecret != hashedSecret, "HoprChannels: new and old hashedSecrets are the same");
+        require(account.counter + 1 < (2 << 32), "HoprChannels: Preventing account counter overflow");
 
         account.hashedSecret = hashedSecret;
-        account.counter = account.counter += 1;
+        account.counter += 1;
 
         emit SecretHashSet(msg.sender, hashedSecret, account.counter);
     }
 
+    /**
+     * Initialize the account's on-chain variables.
+     *
+     * @param senderX uint256 first component of msg.sender's public key
+     * @param senderY uint256 second component of msg.sender's public key
+     * @param hashedSecret initial value for hashedSecret
+     */
     function init(
-        bytes16 hashedSecret,
         uint256 senderX,
-        uint256 senderY
+        uint256 senderY,
+        bytes27 hashedSecret
     ) external {
-        (, uint8 oddY) = ECDSA.compress(senderX, senderY);
+        require(senderX != uint256(0), "HoprChannels: first component of public key must not be zero.");
+        require(hashedSecret != bytes27(0), "HoprChannels: HashedSecret must not be empty.");
 
         require(
-            ECDSA.compressedPubKeyToEthereumAddress(senderX, oddY) == msg.sender,
-            "Given public key must match 'msg.sender'"
+            ECDSA.pubKeyToEthereumAddress(senderX, senderY) == msg.sender,
+            "HoprChannels: Given public key must match 'msg.sender'"
         );
+
+        (, uint8 oddY) = ECDSA.compress(senderX, senderY);
 
         Account storage account = accounts[msg.sender];
 
-        require(
-            account.hashedSecret == bytes16(0) &&
-                account.counter == uint120(0) &&
-                account.oddY == uint8(0) &&
-                account.accountX == uint256(0),
-            "Account must not be set"
-        );
+        require(account.accountX == uint256(0), "HoprChannels: Account must not be set");
 
-        require(hashedSecret != bytes16(0), "HashedSecret must not be empty.");
+        accounts[msg.sender] = Account(senderX, hashedSecret, uint32(0), oddY);
 
-        accounts[msg.sender] = Account(hashedSecret, uint120(0), oddY, senderX);
-
-        emit SecretHashSet(msg.sender, hashedSecret, uint128(0));
-    }
-
-    /**
-     * Fund a channel between 'accountA' and 'accountB',
-     * specified tokens must be approved beforehand.
-     * Called when HOPR tokens are send to this contract.
-     *
-     * @notice fund a channel
-     * @param recipient address account which the funds are for
-     * @param counterParty address the counterParty of 'recipient'
-     * @param additionalDeposit uint256 amount to fund the channel
-     */
-    function fundChannel(
-        address funder,
-        address recipient,
-        address counterParty,
-        uint256 additionalDeposit
-    ) internal {
-        require(recipient != counterParty, "HoprChannels: 'recipient' and 'counterParty' must not be the same");
-        require(recipient != address(0), "HoprChannels: 'recipient' address is empty");
-        require(counterParty != address(0), "HoprChannels: 'counterParty' address is empty");
-        require(additionalDeposit > 0, "HoprChannels: 'additionalDeposit' must be greater than 0");
-
-        (address partyA, , Channel storage channel, ChannelStatus status) = getChannel(recipient, counterParty);
-
-        require(
-            status == ChannelStatus.UNINITIALISED || status == ChannelStatus.FUNDED,
-            "HoprChannels: channel must be 'UNINITIALISED' or 'FUNDED'"
-        );
-
-        channel.deposit = channel.deposit.add(additionalDeposit);
-
-        if (recipient == partyA) {
-            channel.partyABalance = channel.partyABalance.add(additionalDeposit);
-        }
-
-        if (status == ChannelStatus.UNINITIALISED) {
-            // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
-            channel.stateCounter += 1;
-        }
-
-        emitFundedChannel(funder, recipient, counterParty, additionalDeposit, 0);
+        emit SecretHashSet(msg.sender, hashedSecret, uint32(0));
     }
 
     /**
@@ -155,43 +121,50 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
      * specified tokens must be approved beforehand.
      *
      * @notice fund a channel
-     * @param stateCounter uint128
      * @param additionalDeposit uint256
      * @param partyAAmount uint256
-     * @param not_after uint256
+     * @param notAfter uint256
      * @param r bytes32
      * @param s bytes32
      * @param v uint8
+     * @param stateCounter uint128
      */
     function fundChannelWithSig(
         uint256 additionalDeposit,
         uint256 partyAAmount,
-        uint256 not_after,
+        uint256 notAfter,
+        uint256 stateCounter,
         bytes32 r,
         bytes32 s,
-        uint8 v,
-        uint120 stateCounter
+        uint8 v
     ) external {
         address initiator = msg.sender;
 
         // verification
         require(additionalDeposit > 0, "HoprChannels: 'additionalDeposit' must be strictly greater than zero");
+        require(additionalDeposit < (2 << 96), "HoprChannels: Invalid amount");
         require(
             partyAAmount <= additionalDeposit,
             "HoprChannels: 'partyAAmount' must be strictly smaller than 'additionalDeposit'"
         );
-        require(not_after >= now, "HoprChannels: signature must not be expired");
+        // require(partyAAmount < (2 << 96), "Invalid amount");
+        require(notAfter >= now, "HoprChannels: signature must not be expired");
 
         address counterparty = ECDSA.recover(
             ECDSA.toEthSignedMessageHash(
                 "160",
-                abi.encode(stateCounter, initiator, additionalDeposit, partyAAmount, not_after)
+                abi.encode(stateCounter, initiator, additionalDeposit, partyAAmount, notAfter)
             ),
             r,
             s,
-            v
+            uint8(v)
         );
 
+        require(accounts[msg.sender].accountX != uint256(0), "HoprChannels: initiator must have called init before");
+        require(
+            accounts[counterparty].accountX != uint256(0),
+            "HoprChannels: counterparty must have called init before"
+        );
         require(initiator != counterparty, "HoprChannels: initiator and counterparty must not be the same");
 
         (address partyA, , Channel storage channel, ChannelStatus status) = getChannel(initiator, counterparty);
@@ -216,8 +189,8 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
             token.transferFrom(counterparty, address(this), partyAAmount);
         }
 
-        channel.deposit = additionalDeposit;
-        channel.partyABalance = partyAAmount;
+        channel.deposit = uint96(additionalDeposit);
+        channel.partyABalance = uint96(partyAAmount);
 
         if (status == ChannelStatus.UNINITIALISED) {
             // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
@@ -262,7 +235,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
      * @param v uint8
      */
     function redeemTicket(
-        bytes16 preImage,
+        bytes32 preImage,
         bytes32 channelId,
         bytes32 hashedSecretASecretB,
         uint256 amount,
@@ -277,7 +250,14 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         bytes32 hashedTicket = ECDSA.toEthSignedMessageHash(
             "192",
-            abi.encode(channelId, challenge, recipientAccount.hashedSecret, recipientAccount.counter, amount, winProb)
+            abi.encode(
+                channelId,
+                challenge,
+                recipientAccount.hashedSecret,
+                uint256(recipientAccount.counter),
+                amount,
+                winProb
+            )
         );
 
         bytes32 luck = keccak256(abi.encode(hashedTicket, preImage));
@@ -295,18 +275,21 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         );
 
         require(amount > 0, "HoprChannels: amount must be strictly greater than zero");
+        require(amount < (2 << 96), "HoprChannels: Invalid amount");
 
         require(
-            recipientAccount.hashedSecret == bytes16(keccak256(abi.encodePacked(preImage))),
+            recipientAccount.hashedSecret == bytes27(keccak256(abi.encodePacked(preImage))),
             "HoprChannels: given value is not a pre-image of the stored on-chain secret"
         );
 
-        recipientAccount.hashedSecret = preImage;
+        recipientAccount.hashedSecret = bytes27(preImage);
 
         if (msg.sender == partyA) {
-            channel.partyABalance = channel.partyABalance.add(amount);
+            require(channel.partyABalance + amount < (2 << 96), "Invalid amount");
+            channel.partyABalance += uint96(amount);
         } else {
-            channel.partyABalance = channel.partyABalance.sub(amount);
+            require(channel.partyABalance > amount, "Invalid amount");
+            channel.partyABalance -= uint96(amount);
         }
 
         require(
@@ -329,8 +312,11 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         require(status == ChannelStatus.OPEN, "HoprChannels: channel must be 'OPEN'");
 
-        channel.closureTime = uint128(now + secsClosure);
+        require(now + secsClosure < (2 << 40), "HoprChannels: Preventing timestamp overflow");
+        channel.closureTime = uint40(now + secsClosure);
         // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
+
+        require(channel.stateCounter + 1 < (2 << 24), "HoprChannels: Preventing stateCounter overflow");
         channel.stateCounter += 1;
 
         emitInitiatedChannelClosure(initiator, counterparty, channel.closureTime);
@@ -346,29 +332,32 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
     function claimChannelClosure(address counterparty) external {
         address initiator = msg.sender;
 
-        (address party_a, address party_b, Channel storage channel, ChannelStatus status) = getChannel(
+        (address partyA, address partyB, Channel storage channel, ChannelStatus status) = getChannel(
             initiator,
             counterparty
         );
 
+        require(channel.stateCounter + 7 < (2 << 24), "Preventing stateCounter overflow");
+
         require(status == ChannelStatus.PENDING, "HoprChannels: channel must be 'PENDING'");
-        require(now >= channel.closureTime, "HoprChannels: 'closureTime' has not passed");
+        require(now >= uint256(channel.closureTime), "HoprChannels: 'closureTime' has not passed");
 
         // settle balances
         if (channel.partyABalance > 0) {
-            token.transfer(party_a, channel.partyABalance);
-            channel.deposit = channel.deposit.sub(channel.partyABalance);
+            token.transfer(partyA, channel.partyABalance);
+            channel.deposit -= channel.partyABalance;
         }
 
         if (channel.deposit > 0) {
-            token.transfer(party_b, channel.deposit);
+            token.transfer(partyB, channel.deposit);
         }
 
         emitClosedChannel(initiator, counterparty, channel.partyABalance, channel.deposit);
 
-        delete channel.deposit;
-        delete channel.partyABalance;
-        delete channel.closureTime;
+        delete channel.deposit; // channel.deposit = 0
+        delete channel.partyABalance; // channel.partyABalance = 0
+        delete channel.closureTime; // channel.closureTime = 0
+
         // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
         // Increase state counter so that we can re-use the same channel after it has been closed.
         channel.stateCounter += 7;
@@ -400,8 +389,64 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         if (operator != address(this)) {
             (address recipient, address counterParty) = abi.decode(userData, (address, address));
 
-            fundChannel(from, recipient, counterParty, amount);
+            fundChannel(amount, from, recipient, counterParty);
         }
+    }
+
+    /**
+     * Fund a channel between 'accountA' and 'accountB',
+     * specified tokens must be approved beforehand.
+     * Called when HOPR tokens are send to this contract.
+     *
+     * @notice fund a channel
+     * @param additionalDeposit uint256 amount to fund the channel
+     * @param funder address account which the funds are for
+     * @param recipient address account of first participant of the payment channel
+     * @param counterparty address account of the second participant of the payment channel
+     */
+    function fundChannel(
+        uint256 additionalDeposit,
+        address funder,
+        address recipient,
+        address counterparty
+    ) internal {
+        require(recipient != counterparty, "HoprChannels: 'recipient' and 'counterParty' must not be the same");
+        require(recipient != address(0), "HoprChannels: 'recipient' address is empty");
+        require(counterparty != address(0), "HoprChannels: 'counterParty' address is empty");
+        require(additionalDeposit > 0, "HoprChannels: 'additionalDeposit' must be greater than 0");
+        require(additionalDeposit < (2 << 96), "HoprChannels: preventing 'amount' overflow");
+
+        require(accounts[recipient].accountX != uint256(0), "HoprChannels: initiator must have called init() before");
+        require(
+            accounts[counterparty].accountX != uint256(0),
+            "HoprChannels: counterparty must have called init() before"
+        );
+
+        (address partyA, , Channel storage channel, ChannelStatus status) = getChannel(recipient, counterparty);
+
+        require(
+            status == ChannelStatus.UNINITIALISED || status == ChannelStatus.FUNDED,
+            "HoprChannels: channel must be 'UNINITIALISED' or 'FUNDED'"
+        );
+        require(
+            recipient != partyA || channel.partyABalance + additionalDeposit < (2 << 96),
+            "HoprChannels: Invalid amount"
+        );
+        require(channel.deposit + additionalDeposit < (2 << 96), "HoprChannels: Invalid amount");
+        require(channel.stateCounter + 1 < (2 << 24), "HoprChannels: Preventing stateCounter overflow");
+
+        channel.deposit += uint96(additionalDeposit);
+
+        if (recipient == partyA) {
+            channel.partyABalance += uint96(additionalDeposit);
+        }
+
+        if (status == ChannelStatus.UNINITIALISED) {
+            // The state counter indicates the recycling generation and ensures that both parties are using the correct generation.
+            channel.stateCounter += 1;
+        }
+
+        emitFundedChannel(funder, recipient, counterparty, additionalDeposit, 0);
     }
 
     /**
