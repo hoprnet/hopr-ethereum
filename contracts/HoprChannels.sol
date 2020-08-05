@@ -111,9 +111,9 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         require(account.accountX == uint256(0), "HoprChannels: Account must not be set");
 
-        accounts[msg.sender] = Account(senderX, hashedSecret, uint32(0), oddY);
+        accounts[msg.sender] = Account(senderX, hashedSecret, uint32(1), oddY);
 
-        emit SecretHashSet(msg.sender, hashedSecret, uint32(0));
+        emit SecretHashSet(msg.sender, hashedSecret, uint32(1));
     }
 
     /**
@@ -540,6 +540,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         uint256 counterpartyX = counterpartyAccount.accountX;
         uint8 counterpartyOddY = counterpartyAccount.oddY;
+
         assembly {
             let topic0 := or(or(shl(2, shr(2, FundedChannel)), shl(1, recipientOddY)), counterpartyOddY)
 
