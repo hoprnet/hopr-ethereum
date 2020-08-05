@@ -17,8 +17,8 @@ const HoprToken: HoprTokenContract = artifacts.require('HoprToken')
 const HoprChannels: HoprChannelsContract = artifacts.require('HoprChannels')
 
 const formatAccount = (res: PromiseType<HoprChannelsInstance['accounts']>) => ({
-  hashedSecret: res[0],
-  counter: res[1],
+  hashedSecret: res[1],
+  counter: res[2],
 })
 
 const formatChannel = (res: PromiseType<HoprChannelsInstance['channels']>) => ({
@@ -62,50 +62,47 @@ contract('HoprChannels', function ([accountA, accountB]) {
     context("make payments between 'partyA' and 'partyB' using a fresh channel and 'fundChannel'", function () {
       const partyASecret1 = keccak256({
         type: 'bytes32',
-        value: keccak256({ type: 'string', value: 'partyA secret 1' }),
-      })
+        value: keccak256({ type: 'string', value: 'partyA secret 1' }).slice(0, 56),
+      }).slice(0, 56)
       const partyASecret2 = keccak256({
         type: 'bytes32',
         value: partyASecret1,
-      })
+      }).slice(0, 56)
 
       const partyBSecret1 = keccak256({
         type: 'bytes32',
-        value: keccak256({ type: 'string', value: 'partyB secret 1' }),
-      })
+        value: keccak256({ type: 'string', value: 'partyB secret 1' }).slice(0, 56),
+      }).slice(0, 56)
+
       const partyBSecret2 = keccak256({
         type: 'bytes32',
         value: partyBSecret1,
-      })
+      }).slice(0, 56)
 
       it("'partyA' should fund 'partyA' with 1 HOPR", async function () {
-        const secretHashA = keccak256({
-          type: 'string',
-          value: 'partyA secret',
-        })
-
         const pubKeyA = secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1)
 
         await hoprChannels.init(
           u8aToHex(pubKeyA.slice(0, 32), true),
           u8aToHex(pubKeyA.slice(32, 64), true),
-          secretHashA,
+          keccak256({
+            type: 'bytes32',
+            value: partyASecret2,
+          }).slice(0, 56),
           {
             from: partyA,
           }
         )
-
-        const secretHashB = keccak256({
-          type: 'string',
-          value: 'partyA secret',
-        })
 
         const pubKeyB = secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1)
 
         await hoprChannels.init(
           u8aToHex(pubKeyB.slice(0, 32), true),
           u8aToHex(pubKeyB.slice(32, 64), true),
-          secretHashB,
+          keccak256({
+            type: 'bytes32',
+            value: partyBSecret2,
+          }).slice(0, 56),
           {
             from: partyB,
           }
@@ -135,604 +132,559 @@ contract('HoprChannels', function ([accountA, accountB]) {
         expect(channel.stateCounter.eq(new BN(1))).to.be.equal(true, 'wrong stateCounter')
       })
 
-      // it("'partyB' should fund 'partyB' with 1 HOPR", async function () {
-      //   const receipt = await hoprToken.send(
-      //     hoprChannels.address,
-      //     depositAmount,
-      //     web3.eth.abi.encodeParameters(['address', 'address'], [partyB, partyA]),
-      //     {
-      //       from: partyB,
-      //     }
-      //   )
+      it("'partyB' should fund 'partyB' with 1 HOPR", async function () {
+        const receipt = await hoprToken.send(
+          hoprChannels.address,
+          depositAmount,
+          web3.eth.abi.encodeParameters(['address', 'address'], [partyB, partyA]),
+          {
+            from: partyB,
+          }
+        )
 
-      //   expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
-      //     funder: partyB,
-      //     recipient: partyB,
-      //     counterParty: partyA,
-      //     recipientAmount: depositAmount,
-      //     counterPartyAmount: new BN(0),
-      //   })
+        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
+        //   funder: partyB,
+        //   recipient: partyB,
+        //   counterParty: partyA,
+        //   recipientAmount: depositAmount,
+        //   counterPartyAmount: new BN(0),
+        // })
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
+        expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
 
-      //   expect(channel.partyABalance.eq(new BN(depositAmount))).to.be.equal(true, 'wrong partyABalance')
+        expect(channel.partyABalance.eq(new BN(depositAmount))).to.be.equal(true, 'wrong partyABalance')
 
-      //   expect(channel.stateCounter.eq(new BN(1))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(1))).to.be.equal(true, 'wrong stateCounter')
+      })
 
-      // it("should set hashed secret for 'partyA'", async function () {
-      //   // make a ticket to generate hashedSecret for 'partyA'
-      //   const ticket = Ticket({
-      //     web3,
-      //     accountA: partyA,
-      //     accountB: partyB,
-      //     signerPrivKey: partyAPrivKey,
-      //     porSecretA: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret a' }),
-      //     }),
-      //     porSecretB: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret b' }),
-      //     }),
-      //     counterPartySecret: partyASecret2,
-      //     amount: web3.utils.toWei('0.2', 'ether'),
-      //     counter: 1,
-      //     winProbPercent: '100',
-      //   })
+      it("should set hashed secret for 'partyA'", async function () {
+        // make a ticket to generate hashedSecret for 'partyA'
+        const ticket = Ticket({
+          web3,
+          accountA: partyA,
+          accountB: partyB,
+          signerPrivKey: partyAPrivKey,
+          porSecret: keccak256({
+            type: 'bytes32',
+            value: keccak256({ type: 'string', value: 'por secret' }),
+          }),
+          counterPartySecret: partyASecret2,
+          amount: web3.utils.toWei('0.2', 'ether'),
+          counter: 1,
+          winProbPercent: '100',
+        })
 
-      //   await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
-      //     from: partyA,
-      //   })
+        // await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
+        //   from: partyA,
+        // })
 
-      //   const partyAAccount = await hoprChannels.accounts(partyA).then(formatAccount)
+        const partyAAccount = await hoprChannels.accounts(partyA).then(formatAccount)
 
-      //   expect(partyAAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
+        expect(partyAAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
 
-      //   expect(partyAAccount.counter.eq(new BN(1))).to.be.equal(true, 'wrong counter')
-      // })
+        expect(new BN(partyAAccount.counter).eq(new BN(1))).to.be.equal(true, 'wrong counter')
+      })
 
-      // it("should set hashed secret for 'partyB'", async function () {
-      //   // make a ticket to generate hashedSecret for 'partyB'
-      //   const ticket = Ticket({
-      //     web3,
-      //     accountA: partyA,
-      //     accountB: partyB,
-      //     signerPrivKey: partyAPrivKey,
-      //     porSecretA: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret a' }),
-      //     }),
-      //     porSecretB: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret b' }),
-      //     }),
-      //     counterPartySecret: partyBSecret2,
-      //     amount: web3.utils.toWei('0.2', 'ether'),
-      //     counter: 1,
-      //     winProbPercent: '100',
-      //   })
+      it("should set hashed secret for 'partyB'", async function () {
+        // make a ticket to generate hashedSecret for 'partyB'
+        const ticket = Ticket({
+          web3,
+          accountA: partyA,
+          accountB: partyB,
+          signerPrivKey: partyAPrivKey,
+          porSecret: keccak256({
+            type: 'bytes32',
+            value: keccak256({ type: 'string', value: 'por secret' }),
+          }),
+          counterPartySecret: partyBSecret2,
+          amount: web3.utils.toWei('0.2', 'ether'),
+          counter: 1,
+          winProbPercent: '100',
+        })
 
-      //   await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
-      //     from: partyB,
-      //   })
+        // await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
+        //   from: partyB,
+        // })
 
-      //   const partyBAccount = await hoprChannels.accounts(partyB).then(formatAccount)
+        const partyBAccount = await hoprChannels.accounts(partyB).then(formatAccount)
 
-      //   expect(partyBAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
+        expect(partyBAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
 
-      //   expect(partyBAccount.counter.eq(new BN(1))).to.be.equal(true, 'wrong counter')
-      // })
+        expect(partyBAccount.counter.eq(new BN(1))).to.be.equal(true, 'wrong counter')
+      })
 
-      // it('should open channel', async function () {
-      //   const receipt = await hoprChannels.openChannel(partyB, {
-      //     from: partyA,
-      //   })
+      it('should open channel', async function () {
+        const receipt = await hoprChannels.openChannel(partyB, {
+          from: partyA,
+        })
 
-      //   expectEvent.inTransaction(receipt.tx, HoprChannels, 'OpenedChannel', {
-      //     opener: partyA,
-      //     counterParty: partyB,
-      //   })
+        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'OpenedChannel', {
+        //   opener: partyA,
+        //   counterParty: partyB,
+        // })
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.stateCounter.eq(new BN(2))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(2))).to.be.equal(true, 'wrong stateCounter')
+      })
 
-      // it("'partyA' should reedem winning ticket of 0.2 HOPR", async function () {
-      //   const ticket = Ticket({
-      //     web3,
-      //     accountA: partyA,
-      //     accountB: partyB,
-      //     signerPrivKey: partyBPrivKey,
-      //     porSecretA: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret a' }),
-      //     }),
-      //     porSecretB: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret b' }),
-      //     }),
-      //     counterPartySecret: partyASecret2,
-      //     amount: web3.utils.toWei('0.2', 'ether'),
-      //     counter: 1,
-      //     winProbPercent: '100',
-      //   })
+      it("'partyA' should reedem winning ticket of 0.2 HOPR", async function () {
+        const ticket = Ticket({
+          web3,
+          accountA: partyA,
+          accountB: partyB,
+          signerPrivKey: partyBPrivKey,
+          porSecret: keccak256({
+            type: 'bytes32',
+            value: keccak256({ type: 'string', value: 'por secret' }),
+          }),
+          counterPartySecret: partyASecret2,
+          amount: web3.utils.toWei('0.2', 'ether'),
+          counter: 1,
+          winProbPercent: '100',
+        })
 
-      //   await hoprChannels.redeemTicket(
-      //     ticket.counterPartySecret,
-      //     ticket.channelId,
-      //     ticket.porSecretA,
-      //     ticket.porSecretB,
-      //     ticket.amount,
-      //     ticket.winProb,
-      //     ticket.r,
-      //     ticket.s,
-      //     ticket.v,
-      //     { from: partyA }
-      //   )
+        await hoprChannels.redeemTicket(
+          ticket.counterPartySecret,
+          ticket.channelId,
+          ticket.porSecret,
+          ticket.amount,
+          ticket.winProb,
+          ticket.r,
+          ticket.s,
+          ticket.v,
+          { from: partyA }
+        )
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
+        expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
 
-      //   expect(
-      //     channel.partyABalance.eq(new BN(depositAmount).add(new BN(web3.utils.toWei('0.2', 'ether'))))
-      //   ).to.be.equal(true, 'wrong partyABalance')
+        expect(
+          channel.partyABalance.eq(new BN(depositAmount).add(new BN(web3.utils.toWei('0.2', 'ether'))))
+        ).to.be.equal(true, 'wrong partyABalance')
 
-      //   expect(channel.stateCounter.eq(new BN(2))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(2))).to.be.equal(true, 'wrong stateCounter')
+      })
 
-      // it("'partyB' should reedem winning ticket of 1.2 HOPR", async function () {
-      //   const ticket = Ticket({
-      //     web3,
-      //     accountA: partyA,
-      //     accountB: partyB,
-      //     signerPrivKey: partyAPrivKey,
-      //     porSecretA: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret a' }),
-      //     }),
-      //     porSecretB: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret b' }),
-      //     }),
-      //     counterPartySecret: partyBSecret2,
-      //     amount: web3.utils.toWei('1.2', 'ether'),
-      //     counter: 1,
-      //     winProbPercent: '100',
-      //   })
+      it("'partyB' should reedem winning ticket of 1.2 HOPR", async function () {
+        const ticket = Ticket({
+          web3,
+          accountA: partyA,
+          accountB: partyB,
+          signerPrivKey: partyAPrivKey,
+          porSecret: keccak256({
+            type: 'bytes32',
+            value: keccak256({ type: 'string', value: 'por secret' }),
+          }),
+          counterPartySecret: partyBSecret2,
+          amount: web3.utils.toWei('1.2', 'ether'),
+          counter: 1,
+          winProbPercent: '100',
+        })
 
-      //   await hoprChannels.redeemTicket(
-      //     ticket.counterPartySecret,
-      //     ticket.channelId,
-      //     ticket.porSecretA,
-      //     ticket.porSecretB,
-      //     ticket.amount,
-      //     ticket.winProb,
-      //     ticket.r,
-      //     ticket.s,
-      //     ticket.v,
-      //     { from: partyB }
-      //   )
+        await hoprChannels.redeemTicket(
+          ticket.counterPartySecret,
+          ticket.channelId,
+          ticket.porSecret,
+          ticket.amount,
+          ticket.winProb,
+          ticket.r,
+          ticket.s,
+          ticket.v,
+          { from: partyB }
+        )
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
+        expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
 
-      //   expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
+        expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
 
-      //   expect(channel.stateCounter.eq(new BN(2))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(2))).to.be.equal(true, 'wrong stateCounter')
+      })
 
-      // it("'partyB' should initiate closure", async function () {
-      //   const receipt = await hoprChannels.initiateChannelClosure(partyA, {
-      //     from: partyB,
-      //   })
+      it("'partyB' should initiate closure", async function () {
+        const receipt = await hoprChannels.initiateChannelClosure(partyA, {
+          from: partyB,
+        })
 
-      //   expectEvent.inTransaction(receipt.tx, HoprChannels, 'InitiatedChannelClosure', {
-      //     initiator: partyB,
-      //     counterParty: partyA,
-      //   })
+        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'InitiatedChannelClosure', {
+        //   initiator: partyB,
+        //   counterParty: partyA,
+        // })
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.stateCounter.eq(new BN(3))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(3))).to.be.equal(true, 'wrong stateCounter')
+      })
 
-      // it("'partyA' should reedem winning ticket of 0.5 HOPR", async function () {
-      //   const ticket = Ticket({
-      //     web3,
-      //     accountA: partyA,
-      //     accountB: partyB,
-      //     signerPrivKey: partyBPrivKey,
-      //     porSecretA: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret a' }),
-      //     }),
-      //     porSecretB: keccak256({
-      //       type: 'bytes32',
-      //       value: keccak256({ type: 'string', value: 'por secret b' }),
-      //     }),
-      //     counterPartySecret: partyASecret1,
-      //     amount: web3.utils.toWei('0.5', 'ether'),
-      //     counter: 1,
-      //     winProbPercent: '100',
-      //   })
+      it("'partyA' should reedem winning ticket of 0.5 HOPR", async function () {
+        const ticket = Ticket({
+          web3,
+          accountA: partyA,
+          accountB: partyB,
+          signerPrivKey: partyBPrivKey,
+          porSecret: keccak256({
+            type: 'bytes32',
+            value: keccak256({ type: 'string', value: 'por secret' }),
+          }),
+          counterPartySecret: partyASecret1,
+          amount: web3.utils.toWei('0.5', 'ether'),
+          counter: 1,
+          winProbPercent: '100',
+        })
 
-      //   await hoprChannels.redeemTicket(
-      //     ticket.counterPartySecret,
-      //     ticket.channelId,
-      //     ticket.porSecretA,
-      //     ticket.porSecretB,
-      //     ticket.amount,
-      //     ticket.winProb,
-      //     ticket.r,
-      //     ticket.s,
-      //     ticket.v,
-      //     { from: partyA }
-      //   )
+        await hoprChannels.redeemTicket(
+          ticket.counterPartySecret,
+          ticket.channelId,
+          ticket.porSecret,
+          ticket.amount,
+          ticket.winProb,
+          ticket.r,
+          ticket.s,
+          ticket.v,
+          { from: partyA }
+        )
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
+        expect(channel.deposit.eq(new BN(depositAmount).mul(new BN(2)))).to.be.equal(true, 'wrong deposit')
 
-      //   expect(channel.partyABalance.eq(new BN(web3.utils.toWei('0.5', 'ether')))).to.be.equal(
-      //     true,
-      //     'wrong partyABalance'
-      //   )
+        expect(channel.partyABalance.eq(new BN(web3.utils.toWei('0.5', 'ether')))).to.be.equal(
+          true,
+          'wrong partyABalance'
+        )
 
-      //   expect(channel.stateCounter.eq(new BN(3))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(3))).to.be.equal(true, 'wrong stateCounter')
+      })
 
-      // it("'partyA' should close channel", async function () {
-      //   await time.increase(time.duration.days(3))
+      it("'partyA' should close channel", async function () {
+        await time.increase(time.duration.days(3))
 
-      //   const receipt = await hoprChannels.claimChannelClosure(partyB, {
-      //     from: partyA,
-      //   })
+        const receipt = await hoprChannels.claimChannelClosure(partyB, {
+          from: partyA,
+        })
 
-      //   expectEvent.inTransaction(receipt.tx, HoprChannels, 'ClosedChannel', {
-      //     closer: partyA,
-      //     counterParty: partyB,
-      //     partyAAmount: web3.utils.toWei('0.5', 'ether'),
-      //     partyBAmount: web3.utils.toWei('1.5', 'ether'),
-      //   })
+        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'ClosedChannel', {
+        //   closer: partyA,
+        //   counterParty: partyB,
+        //   partyAAmount: web3.utils.toWei('0.5', 'ether'),
+        //   partyBAmount: web3.utils.toWei('1.5', 'ether'),
+        // })
 
-      //   const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+        const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-      //   expect(channel.deposit.eq(new BN(0))).to.be.equal(true, 'wrong deposit')
+        expect(channel.deposit.eq(new BN(0))).to.be.equal(true, 'wrong deposit')
 
-      //   expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
+        expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
 
-      //   expect(channel.stateCounter.eq(new BN(10))).to.be.equal(true, 'wrong stateCounter')
-      // })
+        expect(channel.stateCounter.eq(new BN(10))).to.be.equal(true, 'wrong stateCounter')
+      })
     })
 
-    // context(
-    //   "make payments between 'partyA' and 'partyB' using a recycled channel and 'fundChannelWithSig'",
-    //   function () {
-    //     const partyASecret1 = keccak256({
-    //       type: 'bytes32',
-    //       value: keccak256({ type: 'string', value: 'partyA secret 2' }),
-    //     })
-    //     const partyASecret2 = keccak256({
-    //       type: 'bytes32',
-    //       value: partyASecret1,
-    //     })
+    context(
+      "make payments between 'partyA' and 'partyB' using a recycled channel and 'fundChannelWithSig'",
+      function () {
+        const partyASecret1 = keccak256({
+          type: 'bytes32',
+          value: keccak256({ type: 'string', value: 'partyA secret 2' }).slice(0, 56),
+        }).slice(0, 56)
+        const partyASecret2 = keccak256({
+          type: 'bytes32',
+          value: partyASecret1,
+        }).slice(0, 56)
 
-    //     const partyBSecret1 = keccak256({
-    //       type: 'bytes32',
-    //       value: keccak256({ type: 'string', value: 'partyB secret 2' }),
-    //     })
-    //     const partyBSecret2 = keccak256({
-    //       type: 'bytes32',
-    //       value: partyBSecret1,
-    //     })
+        const partyBSecret1 = keccak256({
+          type: 'bytes32',
+          value: keccak256({ type: 'string', value: 'partyB secret 2' }).slice(0, 56),
+        }).slice(0, 56)
+        const partyBSecret2 = keccak256({
+          type: 'bytes32',
+          value: partyBSecret1,
+        }).slice(0, 56)
 
-    //     it("'partyA' and 'partyB' should fund a total of 1 HOPR", async function () {
-    //       const totalAmount = web3.utils.toWei('1', 'ether')
-    //       const partyAAmount = web3.utils.toWei('0.2', 'ether')
-    //       const partyBAmount = web3.utils.toWei('0.8', 'ether')
+        it("'partyA' and 'partyB' should fund a total of 1 HOPR", async function () {
+          const totalAmount = web3.utils.toWei('1', 'ether')
+          const partyAAmount = web3.utils.toWei('0.2', 'ether')
+          const partyBAmount = web3.utils.toWei('0.8', 'ether')
 
-    //       await hoprToken.approve(hoprChannels.address, totalAmount, {
-    //         from: partyA,
-    //       })
-    //       await hoprToken.approve(hoprChannels.address, totalAmount, {
-    //         from: partyB,
-    //       })
+          await hoprToken.approve(hoprChannels.address, totalAmount, {
+            from: partyA,
+          })
+          await hoprToken.approve(hoprChannels.address, totalAmount, {
+            from: partyB,
+          })
 
-    //       const notAfter = await time.latest().then((now) => {
-    //         return now.add(time.duration.days(2)).toString()
-    //       })
+          const notAfter = await time.latest().then((now) => {
+            return now.add(time.duration.days(2)).toString()
+          })
 
-    //       const fund = Fund({
-    //         web3,
-    //         stateCounter: '10',
-    //         initiator: partyA,
-    //         deposit: totalAmount,
-    //         partyAAmount: partyAAmount,
-    //         notAfter,
-    //         signerPrivKey: partyBPrivKey,
-    //       })
+          const fund = Fund({
+            web3,
+            stateCounter: '10',
+            initiator: partyA,
+            deposit: totalAmount,
+            partyAAmount: partyAAmount,
+            notAfter,
+            signerPrivKey: partyBPrivKey,
+          })
 
-    //       const receipt = await hoprChannels.fundChannelWithSig(
-    //         '10',
-    //         totalAmount,
-    //         partyAAmount,
-    //         notAfter,
-    //         fund.r,
-    //         fund.s,
-    //         fund.v,
-    //         {
-    //           from: partyA,
-    //         }
-    //       )
+          const receipt = await hoprChannels.fundChannelWithSig(
+            totalAmount,
+            partyAAmount,
+            notAfter,
+            '10',
+            fund.r,
+            fund.s,
+            fund.v,
+            {
+              from: partyA,
+            }
+          )
 
-    //       expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
-    //         // funder: partyA,
-    //         recipient: partyA,
-    //         counterParty: partyB,
-    //         recipientAmount: partyAAmount,
-    //         counterPartyAmount: partyBAmount,
-    //       })
+          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
+          //   // funder: partyA,
+          //   recipient: partyA,
+          //   counterParty: partyB,
+          //   recipientAmount: partyAAmount,
+          //   counterPartyAmount: partyBAmount,
+          // })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //       expect(channel.deposit.eq(new BN(totalAmount))).to.be.equal(true, 'wrong deposit')
-    //       expect(channel.partyABalance.eq(new BN(partyAAmount))).to.be.equal(true, 'wrong partyABalance')
-    //       expect(channel.stateCounter.eq(new BN(11))).to.be.equal(true, 'wrong stateCounter')
-    //     })
+          expect(channel.deposit.eq(new BN(totalAmount))).to.be.equal(true, 'wrong deposit')
+          expect(channel.partyABalance.eq(new BN(partyAAmount))).to.be.equal(true, 'wrong partyABalance')
+          expect(channel.stateCounter.eq(new BN(11))).to.be.equal(true, 'wrong stateCounter')
+        })
 
-    //     it("should set hashed secret for 'partyA'", async function () {
-    //       // make a ticket to generate hashedSecret for 'partyA'
-    //       const ticket = Ticket({
-    //         web3,
-    //         accountA: partyA,
-    //         accountB: partyB,
-    //         signerPrivKey: partyAPrivKey,
-    //         porSecretA: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret a' }),
-    //         }),
-    //         porSecretB: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret b' }),
-    //         }),
-    //         counterPartySecret: partyASecret2,
-    //         amount: web3.utils.toWei('0.3', 'ether'),
-    //         counter: 2,
-    //         winProbPercent: '100',
-    //       })
+        it("should set hashed secret for 'partyA'", async function () {
+          // make a ticket to generate hashedSecret for 'partyA'
+          const ticket = Ticket({
+            web3,
+            accountA: partyA,
+            accountB: partyB,
+            signerPrivKey: partyAPrivKey,
+            porSecret: keccak256({
+              type: 'bytes32',
+              value: keccak256({ type: 'string', value: 'por secret' }),
+            }),
+            counterPartySecret: partyASecret2,
+            amount: web3.utils.toWei('0.3', 'ether'),
+            counter: 2,
+            winProbPercent: '100',
+          })
 
-    //       await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
-    //         from: partyA,
-    //       })
+          await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
+            from: partyA,
+          })
 
-    //       const partyAAccount = await hoprChannels.accounts(partyA).then(formatAccount)
+          const partyAAccount = await hoprChannels.accounts(partyA).then(formatAccount)
 
-    //       expect(partyAAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
+          expect(partyAAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
 
-    //       expect(partyAAccount.counter.eq(new BN(2))).to.be.equal(true, 'wrong counter')
-    //     })
+          expect(partyAAccount.counter.eq(new BN(2))).to.be.equal(true, 'wrong counter')
+        })
 
-    //     it("should set hashed secret for 'partyB'", async function () {
-    //       // make a ticket to generate hashedSecret for 'partyB'
-    //       const ticket = Ticket({
-    //         web3,
-    //         accountA: partyA,
-    //         accountB: partyB,
-    //         signerPrivKey: partyAPrivKey,
-    //         porSecretA: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret a' }),
-    //         }),
-    //         porSecretB: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret b' }),
-    //         }),
-    //         counterPartySecret: partyBSecret2,
-    //         amount: web3.utils.toWei('0.7', 'ether'),
-    //         counter: 2,
-    //         winProbPercent: '100',
-    //       })
+        it("should set hashed secret for 'partyB'", async function () {
+          // make a ticket to generate hashedSecret for 'partyB'
+          const ticket = Ticket({
+            web3,
+            accountA: partyA,
+            accountB: partyB,
+            signerPrivKey: partyAPrivKey,
+            porSecret: keccak256({
+              type: 'bytes32',
+              value: keccak256({ type: 'string', value: 'por secret a' }),
+            }),
+            counterPartySecret: partyBSecret2,
+            amount: web3.utils.toWei('0.7', 'ether'),
+            counter: 2,
+            winProbPercent: '100',
+          })
 
-    //       await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
-    //         from: partyB,
-    //       })
+          await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
+            from: partyB,
+          })
 
-    //       const partyBAccount = await hoprChannels.accounts(partyB).then(formatAccount)
+          const partyBAccount = await hoprChannels.accounts(partyB).then(formatAccount)
 
-    //       expect(partyBAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
+          expect(partyBAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
 
-    //       expect(partyBAccount.counter.eq(new BN(2))).to.be.equal(true, 'wrong counter')
-    //     })
+          expect(partyBAccount.counter.eq(new BN(2))).to.be.equal(true, 'wrong counter')
+        })
 
-    //     it('should open channel', async function () {
-    //       const receipt = await hoprChannels.openChannel(partyB, {
-    //         from: partyA,
-    //       })
+        it('should open channel', async function () {
+          const receipt = await hoprChannels.openChannel(partyB, {
+            from: partyA,
+          })
 
-    //       expectEvent.inTransaction(receipt.tx, HoprChannels, 'OpenedChannel', {
-    //         opener: partyA,
-    //         counterParty: partyB,
-    //       })
+          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'OpenedChannel', {
+          //   opener: partyA,
+          //   counterParty: partyB,
+          // })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //       expect(channel.stateCounter.eq(new BN(12))).to.be.equal(true, 'wrong stateCounter')
-    //     })
+          expect(channel.stateCounter.eq(new BN(12))).to.be.equal(true, 'wrong stateCounter')
+        })
 
-    //     it("'partyA' should reedem winning ticket of 0.3 HOPR", async function () {
-    //       const ticket = Ticket({
-    //         web3,
-    //         accountA: partyA,
-    //         accountB: partyB,
-    //         signerPrivKey: partyBPrivKey,
-    //         porSecretA: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret a' }),
-    //         }),
-    //         porSecretB: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret b' }),
-    //         }),
-    //         counterPartySecret: partyASecret2,
-    //         amount: web3.utils.toWei('0.3', 'ether'),
-    //         counter: 2,
-    //         winProbPercent: '100',
-    //       })
+        it("'partyA' should reedem winning ticket of 0.3 HOPR", async function () {
+          const ticket = Ticket({
+            web3,
+            accountA: partyA,
+            accountB: partyB,
+            signerPrivKey: partyBPrivKey,
+            porSecret: keccak256({
+              type: 'bytes32',
+              value: keccak256({ type: 'string', value: 'por secret a' }),
+            }),
 
-    //       await hoprChannels.redeemTicket(
-    //         ticket.counterPartySecret,
-    //         ticket.channelId,
-    //         ticket.porSecretA,
-    //         ticket.porSecretB,
-    //         ticket.amount,
-    //         ticket.winProb,
-    //         ticket.r,
-    //         ticket.s,
-    //         ticket.v,
-    //         { from: partyA }
-    //       )
+            counterPartySecret: partyASecret2,
+            amount: web3.utils.toWei('0.3', 'ether'),
+            counter: 2,
+            winProbPercent: '100',
+          })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          await hoprChannels.redeemTicket(
+            ticket.counterPartySecret,
+            ticket.channelId,
+            ticket.porSecret,
+            ticket.amount,
+            ticket.winProb,
+            ticket.r,
+            ticket.s,
+            ticket.v,
+            { from: partyA }
+          )
 
-    //       expect(channel.deposit.eq(new BN(depositAmount))).to.be.equal(true, 'wrong deposit')
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //       expect(channel.partyABalance.eq(new BN(web3.utils.toWei('0.5', 'ether')))).to.be.equal(
-    //         true,
-    //         'wrong partyABalance'
-    //       )
+          expect(channel.deposit.eq(new BN(depositAmount))).to.be.equal(true, 'wrong deposit')
 
-    //       expect(channel.stateCounter.eq(new BN(12))).to.be.equal(true, 'wrong stateCounter')
-    //     })
+          expect(channel.partyABalance.eq(new BN(web3.utils.toWei('0.5', 'ether')))).to.be.equal(
+            true,
+            'wrong partyABalance'
+          )
 
-    //     it("'partyB' should reedem winning ticket of 0.5 HOPR", async function () {
-    //       const ticket = Ticket({
-    //         web3,
-    //         accountA: partyA,
-    //         accountB: partyB,
-    //         signerPrivKey: partyAPrivKey,
-    //         porSecretA: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret a' }),
-    //         }),
-    //         porSecretB: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret b' }),
-    //         }),
-    //         counterPartySecret: partyBSecret2,
-    //         amount: web3.utils.toWei('0.5', 'ether'),
-    //         counter: 2,
-    //         winProbPercent: '100',
-    //       })
+          expect(channel.stateCounter.eq(new BN(12))).to.be.equal(true, 'wrong stateCounter')
+        })
 
-    //       await hoprChannels.redeemTicket(
-    //         ticket.counterPartySecret,
-    //         ticket.channelId,
-    //         ticket.porSecretA,
-    //         ticket.porSecretB,
-    //         ticket.amount,
-    //         ticket.winProb,
-    //         ticket.r,
-    //         ticket.s,
-    //         ticket.v,
-    //         { from: partyB }
-    //       )
+        it("'partyB' should reedem winning ticket of 0.5 HOPR", async function () {
+          const ticket = Ticket({
+            web3,
+            accountA: partyA,
+            accountB: partyB,
+            signerPrivKey: partyAPrivKey,
+            porSecret: keccak256({
+              type: 'bytes32',
+              value: keccak256({ type: 'string', value: 'por secret a' }),
+            }),
+            counterPartySecret: partyBSecret2,
+            amount: web3.utils.toWei('0.5', 'ether'),
+            counter: 2,
+            winProbPercent: '100',
+          })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          await hoprChannels.redeemTicket(
+            ticket.counterPartySecret,
+            ticket.channelId,
+            ticket.porSecret,
+            ticket.amount,
+            ticket.winProb,
+            ticket.r,
+            ticket.s,
+            ticket.v,
+            { from: partyB }
+          )
 
-    //       expect(channel.deposit.eq(new BN(depositAmount))).to.be.equal(true, 'wrong deposit')
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //       expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
+          expect(channel.deposit.eq(new BN(depositAmount))).to.be.equal(true, 'wrong deposit')
 
-    //       expect(channel.stateCounter.eq(new BN(12))).to.be.equal(true, 'wrong stateCounter')
-    //     })
+          expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
 
-    //     it("'partyB' should initiate closure", async function () {
-    //       const receipt = await hoprChannels.initiateChannelClosure(partyA, {
-    //         from: partyB,
-    //       })
+          expect(channel.stateCounter.eq(new BN(12))).to.be.equal(true, 'wrong stateCounter')
+        })
 
-    //       expectEvent.inTransaction(receipt.tx, HoprChannels, 'InitiatedChannelClosure', {
-    //         initiator: partyB,
-    //         counterParty: partyA,
-    //       })
+        it("'partyB' should initiate closure", async function () {
+          const receipt = await hoprChannels.initiateChannelClosure(partyA, {
+            from: partyB,
+          })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'InitiatedChannelClosure', {
+          //   initiator: partyB,
+          //   counterParty: partyA,
+          // })
 
-    //       expect(channel.stateCounter.eq(new BN(13))).to.be.equal(true, 'wrong stateCounter')
-    //     })
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //     it("'partyA' should reedem winning ticket of 1 HOPR", async function () {
-    //       const ticket = Ticket({
-    //         web3,
-    //         accountA: partyA,
-    //         accountB: partyB,
-    //         signerPrivKey: partyBPrivKey,
-    //         porSecretA: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret a' }),
-    //         }),
-    //         porSecretB: keccak256({
-    //           type: 'bytes32',
-    //           value: keccak256({ type: 'string', value: 'por secret b' }),
-    //         }),
-    //         counterPartySecret: partyASecret1,
-    //         amount: web3.utils.toWei('1', 'ether'),
-    //         counter: 2,
-    //         winProbPercent: '100',
-    //       })
+          expect(channel.stateCounter.eq(new BN(13))).to.be.equal(true, 'wrong stateCounter')
+        })
 
-    //       await hoprChannels.redeemTicket(
-    //         ticket.counterPartySecret,
-    //         ticket.channelId,
-    //         ticket.porSecretA,
-    //         ticket.porSecretB,
-    //         ticket.amount,
-    //         ticket.winProb,
-    //         ticket.r,
-    //         ticket.s,
-    //         ticket.v,
-    //         { from: partyA }
-    //       )
+        it("'partyA' should reedem winning ticket of 1 HOPR", async function () {
+          const ticket = Ticket({
+            web3,
+            accountA: partyA,
+            accountB: partyB,
+            signerPrivKey: partyBPrivKey,
+            porSecret: keccak256({
+              type: 'bytes32',
+              value: keccak256({ type: 'string', value: 'por secret a' }),
+            }),
+            counterPartySecret: partyASecret1,
+            amount: web3.utils.toWei('1', 'ether'),
+            counter: 2,
+            winProbPercent: '100',
+          })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          await hoprChannels.redeemTicket(
+            ticket.counterPartySecret,
+            ticket.channelId,
+            ticket.porSecret,
+            ticket.amount,
+            ticket.winProb,
+            ticket.r,
+            ticket.s,
+            ticket.v,
+            { from: partyA }
+          )
 
-    //       expect(channel.deposit.eq(new BN(depositAmount))).to.be.equal(true, 'wrong deposit')
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //       expect(channel.partyABalance.eq(new BN(depositAmount))).to.be.equal(true, 'wrong partyABalance')
+          expect(channel.deposit.eq(new BN(depositAmount))).to.be.equal(true, 'wrong deposit')
 
-    //       expect(channel.stateCounter.eq(new BN(13))).to.be.equal(true, 'wrong stateCounter')
-    //     })
+          expect(channel.partyABalance.eq(new BN(depositAmount))).to.be.equal(true, 'wrong partyABalance')
 
-    //     it("'partyB' should close channel", async function () {
-    //       await time.increase(time.duration.days(3))
+          expect(channel.stateCounter.eq(new BN(13))).to.be.equal(true, 'wrong stateCounter')
+        })
 
-    //       const receipt = await hoprChannels.claimChannelClosure(partyA, {
-    //         from: partyB,
-    //       })
+        it("'partyB' should close channel", async function () {
+          await time.increase(time.duration.days(3))
 
-    //       expectEvent.inTransaction(receipt.tx, HoprChannels, 'ClosedChannel', {
-    //         closer: partyB,
-    //         counterParty: partyA,
-    //         partyAAmount: web3.utils.toWei('1', 'ether'),
-    //         partyBAmount: '0',
-    //       })
+          const receipt = await hoprChannels.claimChannelClosure(partyA, {
+            from: partyB,
+          })
 
-    //       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
+          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'ClosedChannel', {
+          //   closer: partyB,
+          //   counterParty: partyA,
+          //   partyAAmount: web3.utils.toWei('1', 'ether'),
+          //   partyBAmount: '0',
+          // })
 
-    //       expect(channel.deposit.eq(new BN(0))).to.be.equal(true, 'wrong deposit')
+          const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
-    //       expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
+          expect(channel.deposit.eq(new BN(0))).to.be.equal(true, 'wrong deposit')
 
-    //       expect(channel.stateCounter.eq(new BN(20))).to.be.equal(true, 'wrong stateCounter')
-    //     })
-    //   }
-    // )
+          expect(channel.partyABalance.eq(new BN(0))).to.be.equal(true, 'wrong partyABalance')
+
+          expect(channel.stateCounter.eq(new BN(20))).to.be.equal(true, 'wrong stateCounter')
+        })
+      }
+    )
   })
 
   // unit tests: reset contracts for every test

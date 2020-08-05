@@ -52,7 +52,7 @@ const Ticket: ITicket = ({
   const hashedCounterPartySecret = keccak256({
     type: 'bytes32',
     value: counterPartySecret,
-  })
+  }).slice(0, 56)
 
   // calculate win probability in bytes32
   const winProb = web3.utils.numberToHex(
@@ -65,8 +65,8 @@ const Ticket: ITicket = ({
   const encodedTicket = encode([
     { type: 'bytes32', value: channelId },
     { type: 'bytes32', value: challenge },
-    { type: 'bytes32', value: hashedCounterPartySecret },
-    { type: 'uint256', value: counter },
+    { type: 'bytes27', value: hashedCounterPartySecret },
+    { type: 'uint32', value: counter },
     { type: 'uint256', value: amount },
     { type: 'bytes32', value: winProb },
   ])
