@@ -18,19 +18,10 @@ export const recoverSigner = (web3: Web3, message: string, signature: string) =>
   return web3.eth.accounts.recover(message, signature, false)
 }
 
-export const createChallage = (a: string, b: string): string => {
+export const createChallenge = (a: string): string => {
   return keccak256({
     type: 'bytes',
-    value: encode([
-      {
-        type: 'bytes32',
-        value: a,
-      },
-      {
-        type: 'bytes32',
-        value: b,
-      },
-    ]),
+    value: a,
   })
 }
 

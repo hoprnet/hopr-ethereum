@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js'
-import { keccak256, MAX_UINT256, encode, createChallage, signMessage, getChannelId, getParties } from './random'
+import { keccak256, MAX_UINT256, encode, createChallenge, signMessage, getChannelId, getParties } from './random'
 
 BigNumber.config({ EXPONENTIAL_AT: 1e9 })
 
@@ -7,8 +7,7 @@ type ITicket = (args: {
   web3: any
   accountA: string
   accountB: string
-  porSecretA: string // needs to be bytes32
-  porSecretB: string // needs to be bytes32
+  porSecret: string // needs to be bytes32
   signerPrivKey: string
   counterPartySecret: string // needs to be bytes32
   amount: string
@@ -17,8 +16,7 @@ type ITicket = (args: {
 }) => {
   accountA: string // return same as provided
   accountB: string // return same as provided
-  porSecretA: string // return same as provided
-  porSecretB: string // return same as provided
+  porSecret: string // return same as provided
   counterPartySecret: string // return same as provided
   amount: string // return same as provided
   counter: number // return same as provided
@@ -40,8 +38,7 @@ const Ticket: ITicket = ({
   web3,
   accountA,
   accountB,
-  porSecretA,
-  porSecretB,
+  porSecret,
   signerPrivKey,
   counterPartySecret,
   amount,
@@ -49,7 +46,7 @@ const Ticket: ITicket = ({
   winProbPercent,
 }) => {
   // proof of relay related hashes
-  const challenge = createChallage(porSecretA, porSecretB)
+  const challenge = createChallenge(porSecret)
 
   // proof of randomness related hashes
   const hashedCounterPartySecret = keccak256({
@@ -79,8 +76,7 @@ const Ticket: ITicket = ({
   return {
     accountA,
     accountB,
-    porSecretA,
-    porSecretB,
+    porSecret,
     counterPartySecret,
     amount,
     counter,
