@@ -6,7 +6,7 @@ import {
   HoprTokenContract,
   HoprTokenInstance,
 } from '../types/truffle-contracts'
-import { recoverSigner, keccak256, Ticket, getChannelId, getParties, Fund, getTopic0, checkEvent } from './utils'
+import { recoverSigner, keccak256, Ticket, getChannelId, getParties, Fund, checkEvent } from './utils'
 import { stringToU8a, u8aToHex } from '@hoprnet/hopr-utils'
 import { randomBytes } from 'crypto'
 import secp256k1 from 'secp256k1'
