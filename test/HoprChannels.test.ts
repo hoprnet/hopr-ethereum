@@ -6,12 +6,11 @@ import {
   HoprTokenContract,
   HoprTokenInstance,
 } from '../types/truffle-contracts'
-import { recoverSigner, keccak256, Ticket, getChannelId, getParties, Fund, getTopic0 } from './utils'
+import { recoverSigner, keccak256, Ticket, getChannelId, getParties, Fund, getTopic0, checkEvent } from './utils'
 import { stringToU8a, u8aToHex } from '@hoprnet/hopr-utils'
 import { randomBytes } from 'crypto'
 import secp256k1 from 'secp256k1'
 import { PromiseType } from '../types/typescript'
-import { random } from 'core-js/fn/number'
 
 const HoprToken: HoprTokenContract = artifacts.require('HoprToken')
 const HoprChannels: HoprChannelsContract = artifacts.require('HoprChannels')
@@ -117,13 +116,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
           }
         )
 
-        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
-        //   funder: partyA,
-        //   recipient: partyA,
-        //   counterParty: partyB,
-        //   recipientAmount: depositAmount,
-        //   counterPartyAmount: new BN(0),
-        // })
+        expect(
+          checkEvent(
+            receipt.receipt,
+            'FundedChannel(address,uint,uint,uint,uint)',
+            secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1),
+            secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1)
+          )
+        ).to.be.equal(true, 'wrong event')
 
         const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -142,13 +142,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
           }
         )
 
-        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
-        //   funder: partyB,
-        //   recipient: partyB,
-        //   counterParty: partyA,
-        //   recipientAmount: depositAmount,
-        //   counterPartyAmount: new BN(0),
-        // })
+        expect(
+          checkEvent(
+            receipt.receipt,
+            'FundedChannel(address,uint,uint,uint,uint)',
+            secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1),
+            secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1)
+          )
+        ).to.be.equal(true, 'wrong event')
 
         const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -176,10 +177,6 @@ contract('HoprChannels', function ([accountA, accountB]) {
           winProbPercent: '100',
         })
 
-        // await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
-        //   from: partyA,
-        // })
-
         const partyAAccount = await hoprChannels.accounts(partyA).then(formatAccount)
 
         expect(partyAAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
@@ -204,10 +201,6 @@ contract('HoprChannels', function ([accountA, accountB]) {
           winProbPercent: '100',
         })
 
-        // await hoprChannels.setHashedSecret(ticket.hashedCounterPartySecret, {
-        //   from: partyB,
-        // })
-
         const partyBAccount = await hoprChannels.accounts(partyB).then(formatAccount)
 
         expect(partyBAccount.hashedSecret).to.be.equal(ticket.hashedCounterPartySecret, 'wrong hashedSecret')
@@ -220,10 +213,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
           from: partyA,
         })
 
-        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'OpenedChannel', {
-        //   opener: partyA,
-        //   counterParty: partyB,
-        // })
+        expect(
+          checkEvent(
+            receipt.receipt,
+            'OpenedChannel(uint,uint)',
+            secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1),
+            secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1)
+          )
+        ).to.be.equal(true, 'wrong event')
 
         const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -311,10 +308,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
           from: partyB,
         })
 
-        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'InitiatedChannelClosure', {
-        //   initiator: partyB,
-        //   counterParty: partyA,
-        // })
+        expect(
+          checkEvent(
+            receipt.receipt,
+            'InitiatedChannelClosure(uint,uint,uint)',
+            secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1),
+            secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1)
+          )
+        ).to.be.equal(true, 'wrong event')
 
         const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -368,12 +369,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
           from: partyA,
         })
 
-        // expectEvent.inTransaction(receipt.tx, HoprChannels, 'ClosedChannel', {
-        //   closer: partyA,
-        //   counterParty: partyB,
-        //   partyAAmount: web3.utils.toWei('0.5', 'ether'),
-        //   partyBAmount: web3.utils.toWei('1.5', 'ether'),
-        // })
+        expect(
+          checkEvent(
+            receipt.receipt,
+            'ClosedChannel(uint,uint,uint,uint)',
+            secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1),
+            secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1)
+          )
+        ).to.be.equal(true, 'wrong event')
 
         const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -445,13 +448,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
             }
           )
 
-          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'FundedChannel', {
-          //   // funder: partyA,
-          //   recipient: partyA,
-          //   counterParty: partyB,
-          //   recipientAmount: partyAAmount,
-          //   counterPartyAmount: partyBAmount,
-          // })
+          expect(
+            checkEvent(
+              receipt.receipt,
+              'FundedChannel(address,uint,uint,uint,uint)',
+              secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1),
+              secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1)
+            )
+          ).to.be.equal(true, 'wrong event')
 
           const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -521,10 +525,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
             from: partyA,
           })
 
-          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'OpenedChannel', {
-          //   opener: partyA,
-          //   counterParty: partyB,
-          // })
+          expect(
+            checkEvent(
+              receipt.receipt,
+              'OpenedChannel(uint,uint)',
+              secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1),
+              secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1)
+            )
+          ).to.be.equal(true, 'wrong event')
 
           const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -614,10 +622,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
             from: partyB,
           })
 
-          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'InitiatedChannelClosure', {
-          //   initiator: partyB,
-          //   counterParty: partyA,
-          // })
+          expect(
+            checkEvent(
+              receipt.receipt,
+              'InitiatedChannelClosure(uint,uint,uint)',
+              secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1),
+              secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1)
+            )
+          ).to.be.equal(true, 'wrong event')
 
           const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -668,12 +680,14 @@ contract('HoprChannels', function ([accountA, accountB]) {
             from: partyB,
           })
 
-          // expectEvent.inTransaction(receipt.tx, HoprChannels, 'ClosedChannel', {
-          //   closer: partyB,
-          //   counterParty: partyA,
-          //   partyAAmount: web3.utils.toWei('1', 'ether'),
-          //   partyBAmount: '0',
-          // })
+          expect(
+            checkEvent(
+              receipt.receipt,
+              'ClosedChannel(uint,uint,uint,uint)',
+              secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), false).slice(1),
+              secp256k1.publicKeyCreate(stringToU8a(partyAPrivKey), false).slice(1)
+            )
+          ).to.be.equal(true, 'wrong event')
 
           const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 
@@ -852,14 +866,18 @@ contract('HoprChannels', function ([accountA, accountB]) {
       const compressedPubKeyB = secp256k1.publicKeyCreate(stringToU8a(partyBPrivKey), true)
 
       expect(
-        receipt.receipt.rawLogs[2].topics[0] ===
-          getTopic0('FundedChannel(address,uint,uint,uint,uint)', pubKeyA, pubKeyB),
-        'wrong topic0'
+        checkEvent(receipt.receipt, 'FundedChannel(address,uint,uint,uint,uint)', compressedPubKeyA, compressedPubKeyB)
+      ).to.be.equal(true, 'wrong event')
+
+      expect(receipt.receipt.rawLogs[2].topics[1]).to.be.equal(
+        u8aToHex(compressedPubKeyA.slice(1)),
+        'wrong first public key'
       )
 
-      expect(receipt.receipt.rawLogs[2].topics[1] === u8aToHex(compressedPubKeyA.slice(1)), 'wrong first public key')
-
-      expect(receipt.receipt.rawLogs[2].topics[2] === u8aToHex(compressedPubKeyB.slice(1)), 'wrong second public key')
+      expect(receipt.receipt.rawLogs[2].topics[2]).to.be.equal(
+        u8aToHex(compressedPubKeyB.slice(1)),
+        'wrong second public key'
+      )
 
       const channel = await hoprChannels.channels(getChannelId(partyA, partyB)).then(formatChannel)
 

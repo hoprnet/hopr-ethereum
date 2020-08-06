@@ -89,11 +89,45 @@ export const getTopic0 = (event: string, pubKeyA: Uint8Array, pubKeyB: Uint8Arra
   const u8aEvent = stringToU8a(
     keccak256({
       type: 'string',
-      value: 'event',
+      value: event,
     })
   )
 
   u8aEvent[31] = ((u8aEvent[31] >> 2) << 2) | (compressedPubKeyA[0] % 2 << 1) | compressedPubKeyB[0] % 2
 
   return u8aToHex(u8aEvent)
+}
+
+export const checkEvent = (
+  receipt: Truffle.TransactionResponse['receipt'],
+  event: string,
+  pubKeyA: Uint8Array,
+  pubKeyB: Uint8Array
+) => {
+  const compressedPubKeyA = publicKeyConvert(
+    pubKeyA.length == 64 ? u8aConcat(Uint8Array.from([4]), pubKeyA) : pubKeyA,
+    true
+  )
+  const compressedPubKeyB = publicKeyConvert(
+    pubKeyB.length == 64 ? u8aConcat(Uint8Array.from([4]), pubKeyB) : pubKeyB,
+    true
+  )
+
+  const topics = [
+    getTopic0(event, pubKeyA, pubKeyB),
+    u8aToHex(compressedPubKeyA.slice(1)),
+    u8aToHex(compressedPubKeyB.slice(1)),
+  ].sort()
+
+  return receipt.rawLogs.some((log: { topics: string[] }) => {
+    const sortedTopics = log.topics.sort()
+
+    let i = 0
+
+    return topics.reduce((acc, current, index, array) => {
+      for (; i < sortedTopics.length && sortedTopics[i] != current; i++) {}
+
+      return acc && !(i++ >= sortedTopics.length && index != array.length)
+    }, true)
+  })
 }

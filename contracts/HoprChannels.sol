@@ -638,7 +638,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
          *   uint256 partyAAmount,
          *   uint256 partyBAmount
          */
-        bytes32 ClosedChannel = keccak256("InitiatedChannelClosure(uint,uint,uint,uint)");
+        bytes32 ClosedChannel = keccak256("ClosedChannel(uint,uint,uint,uint)");
 
         Account storage initiatorAccount = accounts[initiator];
         Account storage counterpartyAccount = accounts[counterparty];
