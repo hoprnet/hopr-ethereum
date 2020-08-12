@@ -280,7 +280,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
         require(amount < (1 << 96), "HoprChannels: Invalid amount");
 
         require(
-            recipientAccount.hashedSecret == bytes27(keccak256(abi.encodePacked(preImage))),
+            recipientAccount.hashedSecret == bytes27(keccak256(abi.encodePacked(bytes27(preImage)))),
             "HoprChannels: given value is not a pre-image of the stored on-chain secret"
         );
 

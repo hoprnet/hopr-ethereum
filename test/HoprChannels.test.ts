@@ -60,21 +60,21 @@ contract('HoprChannels', function ([accountA, accountB]) {
 
     context("make payments between 'partyA' and 'partyB' using a fresh channel and 'fundChannel'", function () {
       const partyASecret1 = keccak256({
-        type: 'bytes32',
+        type: 'bytes27',
         value: keccak256({ type: 'string', value: 'partyA secret 1' }).slice(0, 56),
       }).slice(0, 56)
       const partyASecret2 = keccak256({
-        type: 'bytes32',
+        type: 'bytes27',
         value: partyASecret1,
       }).slice(0, 56)
 
       const partyBSecret1 = keccak256({
-        type: 'bytes32',
+        type: 'bytes27',
         value: keccak256({ type: 'string', value: 'partyB secret 1' }).slice(0, 56),
       }).slice(0, 56)
 
       const partyBSecret2 = keccak256({
-        type: 'bytes32',
+        type: 'bytes27',
         value: partyBSecret1,
       }).slice(0, 56)
 
@@ -85,7 +85,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
           u8aToHex(pubKeyA.slice(0, 32), true),
           u8aToHex(pubKeyA.slice(32, 64), true),
           keccak256({
-            type: 'bytes32',
+            type: 'bytes27',
             value: partyASecret2,
           }).slice(0, 56),
           {
@@ -99,7 +99,7 @@ contract('HoprChannels', function ([accountA, accountB]) {
           u8aToHex(pubKeyB.slice(0, 32), true),
           u8aToHex(pubKeyB.slice(32, 64), true),
           keccak256({
-            type: 'bytes32',
+            type: 'bytes27',
             value: partyBSecret2,
           }).slice(0, 56),
           {
@@ -392,20 +392,20 @@ contract('HoprChannels', function ([accountA, accountB]) {
       "make payments between 'partyA' and 'partyB' using a recycled channel and 'fundChannelWithSig'",
       function () {
         const partyASecret1 = keccak256({
-          type: 'bytes32',
+          type: 'bytes27',
           value: keccak256({ type: 'string', value: 'partyA secret 2' }).slice(0, 56),
         }).slice(0, 56)
         const partyASecret2 = keccak256({
-          type: 'bytes32',
+          type: 'bytes27',
           value: partyASecret1,
         }).slice(0, 56)
 
         const partyBSecret1 = keccak256({
-          type: 'bytes32',
+          type: 'bytes27',
           value: keccak256({ type: 'string', value: 'partyB secret 2' }).slice(0, 56),
         }).slice(0, 56)
         const partyBSecret2 = keccak256({
-          type: 'bytes32',
+          type: 'bytes27',
           value: partyBSecret1,
         }).slice(0, 56)
 
@@ -899,9 +899,9 @@ contract('HoprChannels', function ([accountA, accountB]) {
           value: keccak256({ type: 'string', value: 'por secret' }),
         }),
         counterPartySecret: keccak256({
-          type: 'bytes32',
-          value: keccak256({ type: 'string', value: 'partyB secret' }),
-        }),
+          type: 'bytes27',
+          value: keccak256({ type: 'string', value: 'partyB secret' }).slice(0, 56),
+        }).slice(0, 56),
         amount: web3.utils.toWei('0.2', 'ether'),
         counter: 1,
         winProbPercent: '100',
