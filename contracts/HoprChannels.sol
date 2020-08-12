@@ -290,7 +290,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
             require(channel.partyABalance + amount < (1 << 96), "HoprChannels: Invalid amount");
             channel.partyABalance += uint96(amount);
         } else {
-            require(channel.partyABalance <= amount, "HoprChannels: pInvalid amount");
+            require(channel.partyABalance >= amount, "HoprChannels: Invalid amount");
             channel.partyABalance -= uint96(amount);
         }
 
