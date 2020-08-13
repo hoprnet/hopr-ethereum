@@ -50,7 +50,7 @@ const Ticket: ITicket = ({
 
   // proof of randomness related hashes
   const hashedCounterPartySecret = keccak256({
-    type: 'bytes32',
+    type: 'bytes27',
     value: counterPartySecret,
   }).slice(0, 56)
 
