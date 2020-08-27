@@ -6,8 +6,8 @@ on:
       - release/*
 
 jobs:
-  deploy_kovan:
-    name: Deploy Contracts to Kovan
+  deploy:
+    name: Deploy Contracts
     runs-on: ubuntu-latest
     steps:
       # Checkout, Cache and Setup Steps
