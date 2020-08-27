@@ -42,7 +42,7 @@ jobs:
       # Deploy contracts
       - name: Deploy to xDai
         env:
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.SAENTIS_DEPLOYER_KEY }}
           INFURA: ${{ secrets.INFURA }}
           ETHERSCAN: ${{ secrets.ETHERSCAN }}
         run: |
