@@ -38,6 +38,6 @@ module.exports = async (deployer, _network, [owner]) => {
       await hoprFaucet.grantRole(minterRole, hoprFaucet.address)
     }
 
-    await hoprToken.grantRole(hoprFaucet.address)
+    await hoprToken.grantRole(minterRole, hoprFaucet.address)
   }
 }
