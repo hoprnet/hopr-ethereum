@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@hoprnet/hopr-demo-seeds": "1.8",
-    "@hoprnet/hopr-utils": "0.3.0",
+    "@hoprnet/hopr-utils": "0.5.2",
     "@openzeppelin/contracts": "^3.0.1",
     "@openzeppelin/test-helpers": "^0.5.5",
     "@truffle/debug-utils": "^4.1.1",
