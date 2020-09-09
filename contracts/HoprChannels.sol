@@ -296,7 +296,6 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
             channel.partyABalance <= channel.deposit,
             "HoprChannels: partyABalance must be strictly smaller than deposit balance"
         );
-
     }
 
     /**
