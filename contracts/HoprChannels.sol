@@ -252,7 +252,7 @@ contract HoprChannels is IERC777Recipient, ERC1820Implementer {
 
         require(
             recipientAccount.hashedSecret == bytes27(keccak256(abi.encodePacked(bytes27(preImage)))),
-            "HoprChannels: given value is not a pre-image of the stored on-chain secret"
+            "HoprChannels: Given value is not a pre-image of the stored on-chain secret"
         );
 
         bytes32 challenge = keccak256(abi.encodePacked(hashedSecretASecretB));
